@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Scoring Harness — AI Finance Controller (Track 04)
+Scoring Harness for the AI Finance Controller track
 ====================================================
 
 Compares your reconciliation agent's output against ground_truth.csv
@@ -100,7 +100,10 @@ class Scorer:
         })
 
         # ── matchable entries (non-exception ground truth) ──────
-        matchable_gt = [e for e in self.gt_entries if e["match_type"] != "unmatchable"]
+        # out_of_scope = operating outflows (payroll, rent, GST). Neither matchable
+        # nor an exception: listing one is a false positive on the exception list.
+        matchable_gt = [e for e in self.gt_entries
+                        if e["match_type"] not in ("unmatchable", "out_of_scope")]
         unmatchable_gt = [e for e in self.gt_entries if e["match_type"] == "unmatchable"]
 
         # Build a lookup for ground-truth matchable entries
@@ -121,11 +124,11 @@ class Scorer:
                 results_by_reason[gt_entry["reason_code"]]["pred_count"] += 1
                 matched_gt_keys.add(key)
             else:
-                # False positive — no matching ground truth
+                # False positive: no matching ground truth
                 results_by_reason["_false_positive"]["fp"] += 1
                 results_by_reason["_false_positive"]["pred_count"] += 1
 
-        # False negatives — ground truth entries not matched by any prediction
+        # False negatives: ground truth entries not matched by any prediction
         for key, gt_entry in gt_lookup.items():
             if key not in matched_gt_keys:
                 results_by_reason[gt_entry["reason_code"]]["fn"] += 1
@@ -228,6 +231,8 @@ class Scorer:
 # ═══════════════════════════════════════════════════════════════════
 
 def main():
+    # the report uses box-drawing characters; Windows consoles default to cp1252
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Score reconciliation agent output")
     ap.add_argument(
         "--predictions", required=True,

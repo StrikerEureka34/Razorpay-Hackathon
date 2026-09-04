@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """
-Deterministic Synthetic Dataset Generator — AI Finance Controller (Track 04)
+Deterministic Synthetic Dataset Generator for the AI Finance Controller track
 =============================================================================
 
 Generates a multi-source reconciliation dataset with controlled corruption
 scenarios and 100% accurate ground-truth labels.
 
 Outputs:
-    data/invoices.csv          — Accounts receivable ledger
-    data/bank_statement.csv    — Bank transaction history
-    data/processor_payouts.csv — Payment processor settlements
-    data/ground_truth.csv      — Reconciliation answer key
+    data/invoices.csv          Accounts receivable ledger
+    data/bank_statement.csv    Bank transaction history
+    data/processor_payouts.csv Payment processor settlements
+    data/ground_truth.csv      Reconciliation answer key
 
 Guarantees:
     - All amounts use Decimal arithmetic (no float drift)
     - Fully deterministic with fixed seed (re-run = identical output)
-    - Zero LLM dependency — every value is computed programmatically
+    - Zero LLM dependency: every value is computed programmatically
     - 100% accurate ground truth labels
 
 Usage:
@@ -46,6 +46,8 @@ DEFAULT_SEED = 42
 DEFAULT_NUM_INVOICES = 200
 DEFAULT_NUM_CUSTOMERS = 30
 DEFAULT_OUTPUT_DIR = "data"
+AS_OF_DATE = datetime(2025, 6, 30)   # date the AR ledger was exported (period close)
+OPENING_BALANCE = Decimal("1500000.00")
 
 # Scenario weights (sum to exactly 0.90; remaining 0.10 = true exceptions)
 SCENARIO_DISTRIBUTION = {
@@ -86,7 +88,7 @@ FX_CURRENCIES = list(FX_RATES.keys())
 
 
 # ═══════════════════════════════════════════════════════════════════
-# 2. NARRATION TEMPLATES (hardcoded — designed offline, not generated)
+# 2. NARRATION TEMPLATES (hardcoded, designed offline, not generated)
 # ═══════════════════════════════════════════════════════════════════
 
 NARRATION_TEMPLATES = {
@@ -131,17 +133,25 @@ PROCESSOR_NARRATION_TEMPLATES = [
     "CASHFREE PAY-{payout_id}",
 ]
 
-EXCEPTION_NARRATION_TEMPLATES = [
-    "INT CREDIT {ref}",
-    "INTEREST PAYMENT Q{quarter}",
-    "REFUND-{ref}",
-    "REV-{ref} CHARGEBACK",
-    "BANK CHARGES {month}",
-    "GST TDS CREDIT {ref_short}",
-    "DEPOSIT {amount_short}",
-    "MISCELLANEOUS CREDIT",
-    "SERVICE TAX REFUND {ref_short}",
-    "NACH DR {ref}",
+# (reason_code, sign, narration templates) - sign is tied to the kind so a
+# "BANK CHARGES" line can never be generated as a credit.
+EXCEPTION_KINDS = [
+    ("interest_credit",   1, ["INT CREDIT {ref}", "INTEREST PAYMENT Q{quarter}"]),
+    ("tax_credit",        1, ["GST TDS CREDIT {ref_short}", "SERVICE TAX REFUND {ref_short}"]),
+    ("miscellaneous",     1, ["DEPOSIT {amount_short}", "MISCELLANEOUS CREDIT"]),
+    ("bank_charge",      -1, ["BANK CHARGES {month}", "ACCT MAINT FEE {month}"]),
+    ("refund_no_invoice", -1, ["REFUND-{ref}", "REV-{ref} CHARGEBACK"]),
+    ("nach_debit",       -1, ["NACH DR {ref}"]),
+]
+
+# Recurring non-AR outflows: (template, min, max, count per month)
+OPERATING_OUTFLOWS = [
+    ("SALARY PAYOUT {month} PAYROLL",   250_000, 340_000, 1),
+    ("RENT-{month}-PREMISES LEASE",      80_000, 100_000, 1),
+    ("GST PAYMENT GSTR3B {month}",       40_000,  80_000, 1),
+    ("NEFT DR VENDOR PAYMENT {ref}",      8_000,  28_000, 8),
+    ("UPI DR UTILITIES {ref_short}",      1_500,  11_000, 4),
+    ("ACCT MAINT FEE {month}",              500,   2_500, 1),
 ]
 
 
@@ -187,7 +197,7 @@ def build_narration(
     ]
     chosen_ref = rng.choice(ref_variants)
     ref_short = ref_num[-4:] if len(ref_num) >= 4 else ref_num
-    amount_short = str(amount)[-4:] if amount else "0000"
+    amount_short = str(int(amount)) if amount else "0"
 
     if rail == "PROCESSOR":
         tpl = rng.choice(PROCESSOR_NARRATION_TEMPLATES)
@@ -207,6 +217,8 @@ def build_narration(
             amount_short=amount_short,
         )
 
+    if rail == "PROCESSOR":
+        return text          # never truncate: the payout id is the join key
     # Realistic truncation at 32-50 chars
     return text[: rng.randint(32, 50)]
 
@@ -214,12 +226,12 @@ def build_narration(
 def build_messy_narration(
     company: str, ref: str, ifsc: str, rng: random.Random, amount: Decimal
 ) -> str:
-    """Deliberately garbled narration — missing ref, truncated, wrong format."""
+    """Deliberately garbled narration: missing ref, truncated, wrong format."""
     choices = [
         f"NEFT-{ifsc}-{company.upper()[:12]}",
         f"NEFT CR {company.upper()[:8]}... {ref[:3]}",
         f"IMPS/{ref[::-1][:6]}/{company.upper()[:10]}",
-        f"DEPOSIT {str(amount)[-4:]}",
+        f"DEPOSIT {int(amount)}",
         f"NEFT {company.split()[0][:4].upper()} {ref[-4:]}",
         f"CR-{ref.replace('-', '')}#{company.upper()[:6]}",
         f"TRF FROM {company.upper()[:15]}",
@@ -335,10 +347,10 @@ def assign_scenarios(invoices: list[dict], rng: random.Random):
     Tag each invoice with a scenario and separate into processing groups.
 
     Returns:
-        regular   — invoices with 1-to-1 scenarios
-        unpaid    — invoices with no bank match (exceptions)
-        bundles   — list of invoice groups for bundled payout
-        decoys    — list of (inv_a, inv_b) pairs with identical amounts
+        regular:  invoices with 1-to-1 scenarios
+        unpaid:   invoices with no bank match (exceptions)
+        bundles:  list of invoice groups for bundled payout
+        decoys:   list of (inv_a, inv_b) pairs with identical amounts
     """
     n = len(invoices)
     idx = list(range(n))
@@ -405,7 +417,6 @@ def assign_scenarios(invoices: list[dict], rng: random.Random):
     for j in range(pos, min(pos + exc_count, n)):
         inv = invoices[idx[j]]
         inv["_scenario"] = "exception_unpaid"
-        inv["status"] = rng.choice(["overdue", "disputed", "pending"])
         unpaid.append(inv)
     pos += exc_count
 
@@ -416,6 +427,41 @@ def assign_scenarios(invoices: list[dict], rng: random.Random):
 
     return regular, unpaid, bundles, decoys
 
+
+
+def assign_ar_status(invoices: list[dict], as_of: datetime, rng: random.Random):
+    """Set invoice status from the AR ledger's own view: aging plus disputes.
+
+    Deliberately blind to `_scenario`. The AR system does not know whether the
+    cash landed - that is the whole point of reconciliation - so deriving status
+    from payment turns this column into a perfect oracle for the exception list.
+    """
+    for inv in invoices:
+        age = (as_of - datetime.strptime(inv["due_date"], "%Y-%m-%d")).days
+        if rng.random() < 0.06:
+            inv["status"] = "disputed"
+        elif age > 0 and rng.random() < min(0.85, 0.25 + age / 150):
+            inv["status"] = "overdue"
+        elif rng.random() < 0.35:
+            inv["status"] = "pending"
+        else:
+            inv["status"] = "issued"
+
+
+def shuffle_txn_ids(bank_lines: list[dict], ground_truth: list[dict], rng: random.Random):
+    """Re-label bank lines in random order.
+
+    Ids are handed out scenario by scenario, so the ordinal alone reveals the
+    scenario (every exception landed in the last block). Remap both sides together.
+    """
+    new = [gen_id("TXN", i + 1) for i in range(len(bank_lines))]
+    rng.shuffle(new)
+    remap = {bl["txn_id"]: nid for bl, nid in zip(bank_lines, new)}
+    for bl in bank_lines:
+        bl["txn_id"] = remap[bl["txn_id"]]
+    for g in ground_truth:
+        if g["bank_txn_ids"]:
+            g["bank_txn_ids"] = "|".join(remap[t] for t in g["bank_txn_ids"].split("|"))
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -482,8 +528,16 @@ class Reconciler:
         })
 
     def _pay_date(self, inv, extra_lag=0):
+        issue = datetime.strptime(inv["issue_date"], "%Y-%m-%d")
         due = datetime.strptime(inv["due_date"], "%Y-%m-%d")
-        return (due + timedelta(days=self.rng.randint(-2, 5) + extra_lag)).strftime("%Y-%m-%d")
+        # long tail: some pay on receipt, most near terms, a few go badly late
+        term = (due - issue).days
+        lag = self.rng.choices([-term + self.rng.randint(0, 2), self.rng.randint(-14, -3),
+                                self.rng.randint(-2, 7), self.rng.randint(8, 30),
+                                self.rng.randint(31, 75)],
+                               weights=[7, 10, 50, 23, 10])[0]
+        paid = max(issue, due + timedelta(days=lag + extra_lag))
+        return paid.strftime("%Y-%m-%d")
 
     # ── scenario handlers ────────────────────────
 
@@ -643,7 +697,7 @@ class Reconciler:
         spread = Decimal(str(round(self.rng.uniform(0.985, 1.015), 4)))
         eff_rate = d(rate * spread)
         foreign = d(inr / eff_rate)
-        bank_inr = d(foreign * rate)       # bank settlement in domestic INR
+        bank_inr = d(foreign * eff_rate)   # settled at the dealt rate, not the card rate
 
         # Update invoice to reflect billing in foreign currency
         inv["currency"] = ccy
@@ -709,32 +763,67 @@ class Reconciler:
             self._gt("unmatchable", [inv["invoice_id"]], [],
                      "unpaid_invoice", "add_to_exception_list")
 
-    def add_orphan_bank_lines(self, count: int):
-        """Bank credits/debits with no matching invoice."""
+    def add_orphan_bank_lines(self, count: int, known_names: set[str]):
+        """Bank lines with no matching invoice.
+
+        Half are obviously not AR (interest, charges, tax credits) and a keyword
+        regex finds them. The rest are payment-shaped - a credit from a payer who
+        is not a customer, or one quoting an invoice number never issued. Those
+        are the exceptions that need judgement rather than a pattern match.
+        """
         base = datetime(2025, 1, 15)
-        for _ in range(count):
-            amt = d(str(self.rng.uniform(50, 15000)))
-            dt = (base + timedelta(days=self.rng.randint(0, 80))).strftime("%Y-%m-%d")
-
-            tpl = self.rng.choice(EXCEPTION_NARRATION_TEMPLATES)
-            narr = tpl.format(
-                ref=gen_id("REF", self.rng.randint(1000, 9999)),
-                ref_short=str(self.rng.randint(100000, 999999)),
-                quarter=str(self.rng.randint(1, 4)),
-                month=datetime.strptime(dt, "%Y-%m-%d").strftime("%b").upper(),
-                amount_short=str(amt)[-4:],
-            )
-            if self.rng.random() < 0.3:
-                amt = -amt                   # debit (bank charge)
-
-            bl = self._bl(amt, dt, narr)
+        obvious = count - count // 2
+        for i in range(count):
+            dt = (base + timedelta(days=self.rng.randint(0, 130))).strftime("%Y-%m-%d")
+            if i < obvious:
+                reason, sign, templates = self.rng.choice(EXCEPTION_KINDS)
+                amt = d(str(self.rng.uniform(50, 15000))) * sign
+                narr = self.rng.choice(templates).format(
+                    ref=gen_id("REF", self.rng.randint(1000, 9999)),
+                    ref_short=str(self.rng.randint(100000, 999999)),
+                    quarter=str(self.rng.randint(1, 4)),
+                    month=datetime.strptime(dt, "%Y-%m-%d").strftime("%b").upper(),
+                    amount_short=str(int(abs(amt))),
+                )
+            else:
+                reason = self.rng.choice(["unidentified_receipt", "unknown_payer"])
+                amt = d(str(self.rng.uniform(4000, 60000)))
+                payer = self.fake.company()
+                while payer in known_names:
+                    payer = self.fake.company()
+                ghost = gen_id("INV", self.rng.randint(900, 999))   # never issued
+                narr = build_narration(self._rail(), payer, ghost,
+                                       self._ifsc(), self.rng, amount=amt)
+            bl = self._bl(d(amt), dt, narr)
             self.bank_lines.append(bl)
-            exc_type = self.rng.choice([
-                "interest_credit", "bank_charge", "refund_no_invoice",
-                "tax_credit", "miscellaneous",
-            ])
-            self._gt("unmatchable", [], [bl["txn_id"]],
-                     exc_type, "add_to_exception_list")
+            self._gt("unmatchable", [], [bl["txn_id"]], reason, "add_to_exception_list")
+
+    def add_operating_debits(self, start: datetime, end: datetime):
+        """Payroll, rent, GST, vendor and utility outflows.
+
+        These are not receivables and must never reach the exception list - an
+        agent that dumps every unmatched line into exceptions is punished here.
+        They also make `running_balance` mean something.
+        """
+        month = datetime(start.year, start.month, 1)
+        while month <= end:
+            label = month.strftime("%b").upper()
+            for tpl, lo, hi, per_month in OPERATING_OUTFLOWS:
+                for _ in range(per_month):
+                    dt = month + timedelta(days=self.rng.randint(0, 27))
+                    if not (start <= dt <= end):
+                        continue
+                    amt = -d(str(self.rng.uniform(lo, hi)))
+                    narr = tpl.format(
+                        month=label,
+                        ref=gen_id("REF", self.rng.randint(1000, 9999)),
+                        ref_short=str(self.rng.randint(100000, 999999)),
+                    )
+                    bl = self._bl(amt, dt.strftime("%Y-%m-%d"), narr)
+                    self.bank_lines.append(bl)
+                    self._gt("out_of_scope", [], [bl["txn_id"]],
+                             "operating_outflow", "ignore_non_ar")
+            month = datetime(month.year + month.month // 12, month.month % 12 + 1, 1)
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -752,7 +841,7 @@ def aggregate_payouts(charges: list[dict]) -> list[dict]:
                 "payout_date": ch["payout_date"],
                 "gross": Decimal("0"), "fees": Decimal("0"),
                 "refunds": Decimal("0"), "chargebacks": Decimal("0"),
-                "net": Decimal("0"), "charge_ids": [],
+                "net": Decimal("0"), "charge_ids": [], "invoice_refs": [],
             }
         b = buckets[pid]
         b["gross"] += ch["gross"]
@@ -761,6 +850,7 @@ def aggregate_payouts(charges: list[dict]) -> list[dict]:
         b["chargebacks"] += ch["chargebacks"]
         b["net"] += ch["net"]
         b["charge_ids"].append(ch["charge_id"])
+        b["invoice_refs"].append(ch["invoice_id"])
 
     out = []
     for b in buckets.values():
@@ -773,6 +863,7 @@ def aggregate_payouts(charges: list[dict]) -> list[dict]:
             "chargebacks": d(b["chargebacks"]),
             "net": d(b["net"]),
             "charge_ids": "|".join(b["charge_ids"]),
+            "invoice_refs": "|".join(b["invoice_refs"]),
         })
     return sorted(out, key=lambda x: x["payout_date"])
 
@@ -811,7 +902,7 @@ def export(invoices, bank_lines, payouts, ground_truth, out_dir):
     if payouts:
         pay_cols = [
             "payout_id", "payout_date", "gross", "fees",
-            "refunds", "chargebacks", "net", "charge_ids",
+            "refunds", "chargebacks", "net", "charge_ids", "invoice_refs",
         ]
         pd.DataFrame(payouts)[pay_cols].to_csv(
             os.path.join(out_dir, "processor_payouts.csv"), index=False)
@@ -843,7 +934,7 @@ def main():
     Faker.seed(args.seed)
 
     print(f"{'='*60}")
-    print(f"  Synthetic Dataset Generator — Track 04")
+    print(f"  Synthetic Dataset Generator (Track 04)")
     print(f"  seed={args.seed}  invoices={args.num_invoices}")
     print(f"{'='*60}\n")
 
@@ -855,6 +946,7 @@ def main():
     print(f"[2/7] Generated {len(invoices)} invoices")
 
     regular, unpaid, bundles, decoys = assign_scenarios(invoices, rng)
+    assign_ar_status(invoices, AS_OF_DATE, rng)
     counts = Counter(i["_scenario"] for i in invoices)
     print(f"[3/7] Assigned scenarios:")
     for sc, cnt in sorted(counts.items()):
@@ -885,14 +977,18 @@ def main():
         rec.do_decoy(a, b)
 
     rec.add_unpaid_invoices(unpaid)
-    orphan_count = max(8, int(len(invoices) * 0.05))
-    rec.add_orphan_bank_lines(orphan_count)
+    orphan_count = max(8, int(len(invoices) * 0.06))
+    rec.add_orphan_bank_lines(orphan_count, {c["customer_name"] for c in customers})
+
+    span = [datetime.strptime(bl["value_date"], "%Y-%m-%d") for bl in rec.bank_lines]
+    rec.add_operating_debits(min(span), max(span))
 
     print(f"[4/7] Generated {len(rec.bank_lines)} bank lines")
     print(f"[5/7] Generated {len(rec.ground_truth)} ground-truth entries")
 
     # ── post-processing ──────────────────────────
-    rec.bank_lines = compute_running_balance(rec.bank_lines)
+    shuffle_txn_ids(rec.bank_lines, rec.ground_truth, rng)
+    rec.bank_lines = compute_running_balance(rec.bank_lines, OPENING_BALANCE)
     print(f"[6/7] Computed running balance")
 
     payouts = aggregate_payouts(rec.charges)

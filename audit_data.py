@@ -1,4 +1,4 @@
-"""Data quality audit — comprehensive validation of generated synthetic datasets."""
+"""Data quality audit: structural invariants of the generated dataset."""
 import pandas as pd
 from generate_dataset import SCENARIO_DISTRIBUTION, FX_RATES
 
@@ -130,8 +130,15 @@ unpaid_statuses = inv[inv["invoice_id"].isin(unpaid_ids)]["status"].value_counts
 matched_statuses = inv[~inv["invoice_id"].isin(unpaid_ids)]["status"].value_counts().to_dict()
 print(f"  Unpaid invoice statuses in AR ledger: {unpaid_statuses}")
 print(f"  Matched invoice statuses in AR ledger: {matched_statuses}")
-status_ok = all(s in ["overdue", "disputed", "pending"] for s in unpaid_statuses.keys()) and list(matched_statuses.keys()) == ["issued"]
-check("Unpaid invoices clearly marked as overdue/disputed/pending", status_ok)
+# The AR status column must NOT predict the exception list. Real AR systems set
+# status from aging, not from whether the cash arrived - if `status != issued`
+# recovers the exceptions, the agent gets 2/3 of its exception list for free.
+leak = set(inv[inv.status != "issued"].invoice_id)
+tp = len(leak & set(unpaid_ids))
+prec = tp / max(len(leak), 1); rec = tp / max(len(unpaid_ids), 1)
+leak_f1 = 2 * prec * rec / max(prec + rec, 1e-9)
+print(f"  status-as-oracle F1: {leak_f1:.1%} (want < 40% - near the base rate)")
+check("Invoice status does not leak the exception label", leak_f1 < 0.40)
 
 # ── 9. Narration Diversity ──────────────────────
 print("\n--- 9. Sample Bank Narrations ---")
@@ -150,8 +157,9 @@ check("Every customer has multiple transactions (min >= 2)", vc.min() >= 2)
 
 # ── 11. Running Balance Consistency ─────────────
 print("\n--- 11. Running Balance ---")
-print(f"  Opening: 500,000.00 | Closing: {bank.iloc[-1]['running_balance']:,.2f}")
+print(f"  Opening: 1,500,000.00 | Closing: {bank.iloc[-1]['running_balance']:,.2f} | Min: {bank['running_balance'].min():,.2f}")
 check("Bank running balance stays positive throughout", (bank["running_balance"] > 0).all())
+check("Statement has real operating outflows", (bank["amount_signed"] < 0).sum() >= 40)
 
 # ── 12. Ground Truth Completeness ───────────────
 print("\n--- 12. Ground Truth Completeness ---")
