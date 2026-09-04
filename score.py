@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Scoring Harness — AI Finance Controller (Track 04)
+Scoring Harness for the AI Finance Controller track
 ====================================================
 
 Compares your reconciliation agent's output against ground_truth.csv
@@ -28,9 +28,7 @@ from collections import Counter, defaultdict
 import pandas as pd
 
 
-# ═══════════════════════════════════════════════════════════════════
 # HELPERS
-# ═══════════════════════════════════════════════════════════════════
 
 def parse_id_set(cell: str) -> frozenset[str]:
     """Parse a pipe-delimited ID string into a frozenset."""
@@ -43,9 +41,7 @@ def safe_div(num: float, den: float) -> float:
     return num / den if den > 0 else 0.0
 
 
-# ═══════════════════════════════════════════════════════════════════
 # SCORING LOGIC
-# ═══════════════════════════════════════════════════════════════════
 
 class Scorer:
     def __init__(self, gt_path: str, pred_match_path: str, pred_exc_path: str | None):
@@ -99,8 +95,11 @@ class Scorer:
             "gt_count": 0, "pred_count": 0,
         })
 
-        # ── matchable entries (non-exception ground truth) ──────
-        matchable_gt = [e for e in self.gt_entries if e["match_type"] != "unmatchable"]
+        # matchable entries (non-exception ground truth)
+        # out_of_scope = operating outflows (payroll, rent, GST). Neither matchable
+        # nor an exception: listing one is a false positive on the exception list.
+        matchable_gt = [e for e in self.gt_entries
+                        if e["match_type"] not in ("unmatchable", "out_of_scope")]
         unmatchable_gt = [e for e in self.gt_entries if e["match_type"] == "unmatchable"]
 
         # Build a lookup for ground-truth matchable entries
@@ -121,16 +120,16 @@ class Scorer:
                 results_by_reason[gt_entry["reason_code"]]["pred_count"] += 1
                 matched_gt_keys.add(key)
             else:
-                # False positive — no matching ground truth
+                # False positive: no matching ground truth
                 results_by_reason["_false_positive"]["fp"] += 1
                 results_by_reason["_false_positive"]["pred_count"] += 1
 
-        # False negatives — ground truth entries not matched by any prediction
+        # False negatives: ground truth entries not matched by any prediction
         for key, gt_entry in gt_lookup.items():
             if key not in matched_gt_keys:
                 results_by_reason[gt_entry["reason_code"]]["fn"] += 1
 
-        # ── exception scoring ───────────────────────────────────
+        # exception scoring
         true_exc_inv = set()
         true_exc_bank = set()
         for e in unmatchable_gt:
@@ -160,7 +159,7 @@ class Scorer:
         lines.append("=" * 72)
         lines.append("")
 
-        # ── per-scenario table ───────────────────────────────
+        # per-scenario table
         lines.append(f"{'Reason Code':<30s} {'GT':>4s} {'TP':>4s} {'FP':>4s} {'FN':>4s}  {'Prec':>6s} {'Rec':>6s} {'F1':>6s}")
         lines.append("─" * 72)
 
@@ -201,7 +200,7 @@ class Scorer:
         )
         lines.append("")
 
-        # ── exception scoring ────────────────────────────────
+        # exception scoring
         if "_exceptions" in results:
             exc = results["_exceptions"]
             ep = safe_div(exc["tp"], exc["tp"] + exc["fp"])
@@ -211,7 +210,7 @@ class Scorer:
                          f"  {ep:>6.1%} {er:>6.1%} {ef1:>6.1%}")
             lines.append("")
 
-        # ── headline metric ──────────────────────────────────
+        # headline metric
         lines.append("=" * 72)
         match_rate = safe_div(total_tp, total_gt) if total_gt else 0
         lines.append(f"  MATCH RATE:  {match_rate:.1%}  ({total_tp}/{total_gt} ground-truth entries matched)")
@@ -223,11 +222,11 @@ class Scorer:
         return "\n".join(lines)
 
 
-# ═══════════════════════════════════════════════════════════════════
 # MAIN
-# ═══════════════════════════════════════════════════════════════════
 
 def main():
+    # the report uses box-drawing characters; Windows consoles default to cp1252
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     ap = argparse.ArgumentParser(description="Score reconciliation agent output")
     ap.add_argument(
         "--predictions", required=True,

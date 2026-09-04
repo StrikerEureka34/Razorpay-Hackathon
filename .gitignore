@@ -23,8 +23,9 @@ env/
 .DS_Store
 Thumbs.db
 
-# Generated data (reproducible from generator)
+# Generated data (rebuild with the generator, the seed is committed)
 data/
 
-# Results (agent output — not committed)
+# Held-out set and agent output, not committed
+data_holdout/
 results/
