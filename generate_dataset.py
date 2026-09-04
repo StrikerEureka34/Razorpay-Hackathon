@@ -47,9 +47,9 @@ DEFAULT_NUM_INVOICES = 200
 DEFAULT_NUM_CUSTOMERS = 30
 DEFAULT_OUTPUT_DIR = "data"
 
-# Scenario weights (sum to ~0.90; remaining ~0.10 = true exceptions)
+# Scenario weights (sum to exactly 0.90; remaining 0.10 = true exceptions)
 SCENARIO_DISTRIBUTION = {
-    "clean":           0.35,
+    "clean":           0.26,
     "processor_fee":   0.12,
     "timing_lag":      0.10,
     "bundled_payout":  0.10,
@@ -58,7 +58,7 @@ SCENARIO_DISTRIBUTION = {
     "name_variant":    0.05,
     "fx_conversion":   0.04,
     "duplicate_bank":  0.03,
-    "decoy":           0.03,
+    "decoy":           0.04,
 }
 
 # Fee structures
@@ -175,7 +175,18 @@ def build_narration(
     amount: Decimal = Decimal("0"),
 ) -> str:
     """Fill a narration template with deterministic values, then truncate."""
-    ref_short = ref[-6:] if len(ref) > 6 else ref
+    ref_num = ref.split("-")[-1] if "-" in ref else ref
+    ref_short_int = str(int(ref_num)) if ref_num.isdigit() else ref_num[-4:]
+    ref_variants = [
+        ref,                         # e.g. INV-000068
+        f"INV{ref_short_int}",       # e.g. INV68
+        ref_num,                     # e.g. 000068
+        ref_short_int,               # e.g. 68
+        f"REF{ref_num[-4:]}",        # e.g. REF0068
+        "",                          # reference omitted
+    ]
+    chosen_ref = rng.choice(ref_variants)
+    ref_short = ref_num[-4:] if len(ref_num) >= 4 else ref_num
     amount_short = str(amount)[-4:] if amount else "0000"
 
     if rail == "PROCESSOR":
@@ -189,7 +200,7 @@ def build_narration(
         tpl = rng.choice(NARRATION_TEMPLATES.get(rail, NARRATION_TEMPLATES["NEFT"]))
         text = tpl.format(
             company=company.upper()[:20],
-            ref=ref,
+            ref=chosen_ref,
             ref_short=ref_short,
             ifsc=ifsc,
             amount=str(amount),
@@ -262,6 +273,27 @@ def generate_invoices(
     end_date = datetime(2025, 3, 31)
     start_date = end_date - timedelta(days=90)
 
+    # Tiered customer weights so invoice volume reflects realistic business patterns:
+    # 5 anchor accounts (wt 4), 15 mid-market (wt 2), 10 small (wt 1)
+    n_cust = len(customers)
+    cust_weights = [4] * min(5, n_cust) + [2] * min(15, max(0, n_cust - 5)) + [1] * max(0, n_cust - 20)
+    if len(cust_weights) < n_cust:
+        cust_weights += [1] * (n_cust - len(cust_weights))
+    elif len(cust_weights) > n_cust:
+        cust_weights = cust_weights[:n_cust]
+    total_w = sum(cust_weights)
+    cust_probs = [w / total_w for w in cust_weights]
+
+    # Pre-allocate at least 2 invoices per customer, then fill the remainder by weight
+    cust_pool = []
+    min_per_cust = 2 if n >= 2 * n_cust else 1
+    for c in customers:
+        cust_pool.extend([c] * min_per_cust)
+    rem_count = n - len(cust_pool)
+    if rem_count > 0:
+        cust_pool.extend(rng.choices(customers, weights=cust_probs, k=rem_count))
+    rng.shuffle(cust_pool)
+
     invoices = []
     for i in range(n):
         # Log-normal → mostly ₹5K-₹50K, occasional ₹5L+
@@ -275,7 +307,8 @@ def generate_invoices(
         term_days = int(terms.replace("NET", ""))
         due = issue + timedelta(days=term_days)
 
-        cust = rng.choice(customers)
+        cust = cust_pool[i]
+
         invoices.append({
             "invoice_id": gen_id("INV", i + 1),
             "customer_id": cust["customer_id"],
@@ -321,15 +354,17 @@ def assign_scenarios(invoices: list[dict], rng: random.Random):
         count = int(n * weight)
 
         if scenario == "bundled_payout":
-            # carve into groups of 3-6
+            # carve into groups of 3-5
             pool = [invoices[idx[j]] for j in range(pos, min(pos + count, n))]
             for inv in pool:
                 inv["_scenario"] = "bundled_payout"
             gi = 0
             while gi < len(pool):
-                sz = rng.randint(3, min(6, len(pool) - gi))
-                if sz < 2:
-                    sz = len(pool) - gi
+                rem = len(pool) - gi
+                if rem <= 5:
+                    sz = rem
+                else:
+                    sz = rng.randint(3, 4)
                 grp = pool[gi : gi + sz]
                 if len(grp) >= 2:
                     bundles.append(grp)
@@ -368,8 +403,10 @@ def assign_scenarios(invoices: list[dict], rng: random.Random):
     # ~10 % true exceptions (unpaid invoices)
     exc_count = int(n * 0.10)
     for j in range(pos, min(pos + exc_count, n)):
-        invoices[idx[j]]["_scenario"] = "exception_unpaid"
-        unpaid.append(invoices[idx[j]])
+        inv = invoices[idx[j]]
+        inv["_scenario"] = "exception_unpaid"
+        inv["status"] = rng.choice(["overdue", "disputed", "pending"])
+        unpaid.append(inv)
     pos += exc_count
 
     # leftover → clean
@@ -378,6 +415,7 @@ def assign_scenarios(invoices: list[dict], rng: random.Random):
         regular.append(invoices[idx[j]])
 
     return regular, unpaid, bundles, decoys
+
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -602,19 +640,28 @@ class Reconciler:
         inr = inv["amount_gross"]
         ccy = self.rng.choice(FX_CURRENCIES)
         rate = FX_RATES[ccy]
-        spread = Decimal(str(1 + self.rng.uniform(-0.015, 0.015)))
+        spread = Decimal(str(round(self.rng.uniform(0.985, 1.015), 4)))
         eff_rate = d(rate * spread)
         foreign = d(inr / eff_rate)
-        bank_inr = d(foreign * rate)       # bank uses mid-market
+        bank_inr = d(foreign * rate)       # bank settlement in domestic INR
 
-        narr = build_narration(
-            self._rail(), inv["customer_name"],
-            f"{inv['invoice_id']}/{ccy}", self._ifsc(), self.rng, amount=bank_inr,
-        )
+        # Update invoice to reflect billing in foreign currency
+        inv["currency"] = ccy
+        inv["amount_gross"] = foreign
+        inv["tax_amount"] = Decimal("0.00")  # export invoice: zero-rated
+
+        narr_choices = [
+            f"INWARD TT {ccy} {foreign} REF {inv['invoice_id'][-6:]}",
+            f"FOREX CR {ccy}/{inv['customer_name'].upper()[:12]}-{inv['invoice_id'][-4:]}",
+            f"NEFT-{self._ifsc()}-{inv['customer_name'].upper()[:10]}-{ccy}",
+            f"SWIFT INW {inv['customer_name'].upper()[:14]} {foreign}",
+        ]
+        narr = self.rng.choice(narr_choices)[: self.rng.randint(32, 50)]
         bl = self._bl(bank_inr, self._pay_date(inv), narr)
         self.bank_lines.append(bl)
         self._gt("one_to_one", [inv["invoice_id"]], [bl["txn_id"]],
                  "fx_conversion", "match_with_fx_tolerance")
+
 
     def do_duplicate(self, inv):
         amt = inv["amount_gross"]
@@ -838,7 +885,7 @@ def main():
         rec.do_decoy(a, b)
 
     rec.add_unpaid_invoices(unpaid)
-    orphan_count = max(4, int(len(invoices) * 0.04))
+    orphan_count = max(8, int(len(invoices) * 0.05))
     rec.add_orphan_bank_lines(orphan_count)
 
     print(f"[4/7] Generated {len(rec.bank_lines)} bank lines")
