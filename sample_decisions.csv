@@ -1,0 +1,4 @@
+item_type,item_id,action,matched_ids,reviewer,note,decided_at
+invoice,INV-000021,matched,TXN-000056|TXN-000214,R. Menon financial controller,Two UPI legs from Ahuja-Dutta sum to the invoice,2026-09-05 18:40:11
+invoice,INV-000055,matched,TXN-000063|TXN-000135,R. Menon financial controller,Second leg quotes REF B so the pair is the same invoice,2026-09-05 18:42:03
+bank_txn,TXN-000150,kept,,R. Menon financial controller,Quotes INV-000900 which was never issued,2026-09-05 18:43:20

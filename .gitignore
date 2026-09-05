@@ -34,3 +34,9 @@ data/
 # Held-out set and agent output, not committed
 data_holdout/
 results/
+
+# Impeccable tool install (51MB of platform binaries, run: npx impeccable install)
+.agent/
+.claude/
+.gemini/
+.impeccable/

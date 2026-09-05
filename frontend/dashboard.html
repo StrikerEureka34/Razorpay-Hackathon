@@ -1,0 +1,1654 @@
+<title>Reconciliation Desk</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root {
+  --ground:   #E7EDEE;
+  --surface:  #F3F8F8;
+  --sunk:     #DCE5E6;
+  --ink:      #0D1B1E;
+  /* Light values are set to clear 4.5:1 on every ground they are used against,
+     including --sunk on row hover and the composited --accent-w selection. */
+  --muted:    #4A5D61;
+  --faint:    #54686D;
+  --rule:     #C3D2D4;
+  --hairline: #D3DEDF;
+  --accent:   #0B5563;
+  --accent-w: #0B556320;
+  --jade:     #1F6F5C;
+  --brass:    #7E5514;
+  --clay:     #A33A2B;
+  --slate:    #4F5F64;
+  --focus:    #0B5563;
+
+  --display: "Bricolage Grotesque", "Trebuchet MS", sans-serif;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:   #0B1517;
+    --surface:  #111F22;
+    --sunk:     #16282C;
+    --ink:      #EAF3F4;
+    --muted:    #B3C8CC;
+    --faint:    #90A7AD;
+    --rule:     #2C4348;
+    --hairline: #223639;
+    --accent:   #5FBACB;
+    --accent-w: #5FBACB26;
+    --jade:     #57C3A3;
+    --brass:    #D9A94F;
+    --clay:     #E4795F;
+    --slate:    #84979C;
+    --focus:    #5FBACB;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ground:   #0B1517;
+  --surface:  #111F22;
+  --sunk:     #16282C;
+  --ink:      #EAF3F4;
+  --muted:    #B3C8CC;
+  --faint:    #90A7AD;
+  --rule:     #2C4348;
+  --hairline: #223639;
+  --accent:   #5FBACB;
+  --accent-w: #5FBACB26;
+  --jade:     #57C3A3;
+  --brass:    #D9A94F;
+  --clay:     #E4795F;
+  --slate:    #84979C;
+  --focus:    #5FBACB;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15.5px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 0;
+  max-width: 1320px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+/* ---------- identity rail ---------- */
+
+.rail {
+  position: sticky;
+  top: 0;
+  padding: 34px 26px 40px 22px;
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+}
+
+.wordmark {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 21px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variation-settings: "wdth" 92;
+  margin: 0;
+}
+
+.wordmark span { display: block; color: var(--accent); }
+
+.stamp {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 8px;
+}
+
+.railgroup > h2 {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 9px;
+}
+
+.facts { margin: 0; display: grid; gap: 5px; }
+
+.facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.facts b {
+  font-family: var(--mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.spark { display: block; width: 100%; height: 54px; }
+
+.cashline {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  margin-top: 6px;
+}
+
+.cashline .lo { color: var(--faint); }
+
+/* ---------- main column ---------- */
+
+main {
+  padding: 38px 12px 96px 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  min-width: 0;
+}
+
+section { min-width: 0; }
+
+.masthead { max-width: 72ch; }
+
+/* ---------- tabs ---------- */
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--rule);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabs button {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 11px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -3px; }
+
+.tabs .n {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+  margin-left: 8px;
+}
+
+.tabs button[aria-selected="true"] .n { color: var(--accent); }
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  padding-top: 12px;
+}
+
+.panel > .sechead { margin-bottom: 0; }
+.panel > .lede { margin-bottom: 0; }
+
+/* Set in sentence case. Uppercasing a 31 character line costs legibility for
+   nothing; the mono face and colour already mark it as an eyebrow. */
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  margin: 0 0 6px;
+}
+
+h1 {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(28px, 3.4vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  font-variation-settings: "wdth" 90;
+  margin: 0 0 8px;
+  text-wrap: balance;
+  max-width: 20ch;
+}
+
+h2.title {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.015em;
+  margin: 0 0 3px;
+}
+
+.lede {
+  color: var(--muted);
+  max-width: 62ch;
+  margin: 0 0 22px;
+}
+
+.sechead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 8px;
+  margin-bottom: 18px;
+}
+
+.sechead p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+/* ---------- calibration scale ---------- */
+
+.calib { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 34px; align-items: center; }
+
+.scale { min-width: 0; }
+
+.track {
+  position: relative;
+  height: 34px;
+  background: var(--sunk);
+  border: 1px solid var(--hairline);
+}
+
+.seg { position: absolute; top: 0; bottom: 0; }
+.seg.floor { left: 0; background: var(--slate); opacity: 0.45; }
+.seg.gain  { background: var(--accent); }
+
+.tick {
+  position: absolute;
+  top: -7px;
+  bottom: -7px;
+  width: 1px;
+  background: var(--ink);
+}
+
+.ticklabels { position: relative; height: 42px; margin-top: 11px; }
+
+.tl { position: absolute; top: 0; transform: translateX(-50%); text-align: center; white-space: nowrap; }
+.tl.edge-l { transform: none; text-align: left; }
+.tl.edge-r { transform: translateX(-100%); text-align: right; }
+
+.tl .v {
+  display: block;
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.tl .k {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-top: 2px;
+}
+
+.headline { text-align: right; }
+
+.headline .big {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(52px, 7vw, 78px);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  font-variation-settings: "wdth" 88;
+  font-variant-numeric: tabular-nums;
+  display: block;
+}
+
+.headline .cap {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--faint);
+  display: block;
+  margin-top: 10px;
+}
+
+.headline .gain {
+  color: var(--jade);
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  display: block;
+  margin-top: 5px;
+}
+
+/* ---------- disposition ---------- */
+
+.bar { display: flex; height: 46px; border: 1px solid var(--hairline); }
+
+.bar > span {
+  display: flex;
+  align-items: center;
+  padding-left: 9px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ground);
+  overflow: hidden;
+}
+
+.bar .b-match { background: var(--jade); }
+.bar .b-review { background: var(--brass); }
+.bar .b-exception { background: var(--clay); }
+.bar .b-scope { background: var(--slate); }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 24px;
+  margin-top: 14px;
+}
+
+.legend div { display: flex; align-items: baseline; gap: 8px; font-size: 14px; color: var(--muted); }
+
+.legend i {
+  width: 9px; height: 9px;
+  flex: none;
+  border-radius: 50%;
+  transform: translateY(1px);
+}
+
+.legend b { color: var(--ink); font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* ---------- ledger table ---------- */
+
+.scroller { overflow-x: auto; }
+
+table { border-collapse: collapse; width: 100%; min-width: 640px; }
+
+th, td { padding: 7px 12px; text-align: right; }
+th:first-child, td:first-child { text-align: left; padding-left: 0; }
+th:last-child, td:last-child { padding-right: 0; }
+
+thead th {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--faint);
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 6px;
+}
+
+tbody td { border-bottom: 1px solid var(--hairline); font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 14px; }
+tbody td:first-child { font-family: var(--sans); }
+tbody tr:hover td { background: var(--surface); }
+
+tfoot td {
+  border-top: 1px solid var(--rule);
+  border-bottom: none;
+  padding-top: 9px;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+tfoot td:first-child { font-family: var(--sans); }
+
+.zero { color: var(--faint); }
+.miss { color: var(--clay); }
+
+.meter { display: flex; align-items: center; gap: 9px; justify-content: flex-end; }
+.meter-track { width: 62px; height: 5px; background: var(--sunk); flex: none; }
+.meter-fill { height: 100%; background: var(--accent); display: block; }
+.meter-fill.warn { background: var(--brass); }
+
+/* ---------- review queue ---------- */
+
+.queue { display: grid; gap: 14px; }
+
+.item { border: 1px solid var(--rule); background: var(--surface); }
+
+.item > summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 13px 16px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.outcome {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  color: var(--ground);
+  white-space: nowrap;
+}
+
+.outcome.settled { background: var(--jade); }
+.outcome.held { background: var(--brass); }
+
+.cand.chosen { border-color: var(--jade); }
+
+.cand .tag {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--jade);
+  display: block;
+  margin-top: 3px;
+}
+
+.item > summary::-webkit-details-marker { display: none; }
+.item > summary:hover { background: var(--sunk); }
+.item[open] > summary { border-bottom: 1px solid var(--rule); }
+
+.rank {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ground);
+  background: var(--brass);
+  padding: 2px 7px;
+  font-weight: 500;
+}
+
+.item .idline { font-family: var(--mono); font-size: 13px; color: var(--ink); }
+.item .idline em { font-style: normal; color: var(--muted); }
+.item .risk { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; font-size: 14px; }
+
+.body { padding: 20px; display: grid; gap: 18px; }
+
+.narration {
+  font-family: var(--mono);
+  font-size: 14px;
+  background: var(--ground);
+  border-left: 2px solid var(--brass);
+  padding: 9px 12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.cands { display: grid; gap: 9px; }
+
+.cand {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  background: var(--ground);
+}
+
+.cand.lead { border-color: var(--brass); }
+
+.cand .who { font-size: 15px; min-width: 0; }
+.cand .who b { font-family: var(--mono); font-weight: 500; }
+/* evidence reads as a sentence, not a data dump, so it stays in the sans face */
+.cand .feat { color: var(--muted); font-size: 13.5px; display: block; margin-top: 4px; }
+.cand .sc { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 500; }
+
+.verdict { font-size: 14.5px; color: var(--muted); max-width: 74ch; }
+
+.verdict + .why-model { margin-top: 10px; }
+
+details.why-model summary {
+  font-size: 13.5px;
+  color: var(--accent);
+  cursor: pointer;
+  list-style: none;
+}
+
+details.why-model summary::-webkit-details-marker { display: none; }
+details.why-model summary:hover { text-decoration: underline; }
+
+details.why-model p {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 8px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--hairline);
+  max-width: 74ch;
+}
+.verdict b { color: var(--ink); font-weight: 600; }
+
+/* ---------- inspector ---------- */
+
+.finder { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+
+input[type="search"] {
+  font-family: var(--mono);
+  font-size: 14.5px;
+  padding: 9px 12px;
+  min-width: 240px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
+
+input[type="search"]:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+button.chip {
+  font-family: var(--mono);
+  font-size: 14.5px;
+  padding: 6px 10px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+  cursor: pointer;
+}
+
+button.chip:hover { color: var(--ink); border-color: var(--accent); }
+
+.trace { border: 1px solid var(--rule); background: var(--surface); padding: 18px; }
+
+.trace .head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.pill {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  color: var(--ground);
+}
+
+.pill.match { background: var(--jade); }
+.pill.review { background: var(--brass); }
+.pill.exception { background: var(--clay); }
+.pill.out_of_scope { background: var(--slate); }
+
+.trace .who { font-family: var(--mono); font-size: 15px; }
+.trace .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px 22px; margin-bottom: 14px; }
+.trace .grid div { font-size: 14px; }
+.trace .grid span { display: block; font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.trace .grid b { font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
+.trace .why { font-size: 14.5px; color: var(--muted); margin: 0 0 14px; max-width: 74ch; }
+.trace .empty { color: var(--muted); font-size: 14.5px; margin: 0; }
+
+/* ---------- review station ---------- */
+
+.who-rail select {
+  font-family: var(--sans);
+  font-size: 14px;
+  width: 100%;
+  padding: 7px 8px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+}
+
+.who-rail select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.tally-rail {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  margin-top: 8px;
+}
+
+.tally-rail b { color: var(--jade); }
+
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+
+button.chip.on { color: var(--ground); background: var(--accent); border-color: var(--accent); }
+
+.station {
+  display: grid;
+  grid-template-columns: 296px minmax(0, 1fr);
+  border: 1px solid var(--rule);
+  background: var(--surface);
+}
+
+.qlist { border-right: 1px solid var(--rule); max-height: 470px; overflow-y: auto; }
+
+.qrow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 10px;
+  align-items: baseline;
+  width: 100%;
+  text-align: left;
+  padding: 10px 13px;
+  border: none;
+  border-bottom: 1px solid var(--hairline);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.qrow:hover { background: var(--sunk); }
+.qrow.on { background: var(--sunk); border-left-color: var(--accent); }
+.qrow.done { color: var(--faint); }
+.qrow.done .qid { text-decoration: line-through; }
+
+.qid { font-family: var(--mono); font-size: 14px; }
+.qamt { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+.qsub { grid-column: 1 / -1; font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.detail { padding: 18px; display: grid; gap: 14px; align-content: start; }
+.detail h3 { font-family: var(--display); font-weight: 700; font-size: 17px; margin: 0; }
+.detail .sub { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+.picks { display: grid; gap: 6px; max-height: 220px; overflow-y: auto; }
+
+.pick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 11px;
+  align-items: center;
+  padding: 8px 11px;
+  border: 1px solid var(--hairline);
+  background: var(--ground);
+  cursor: pointer;
+}
+
+.pick:hover { border-color: var(--accent); }
+/* These carry role=checkbox/radio and tabIndex=0, so they need an authored focus
+   ring like every other control, not just the UA default. */
+.pick:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pick.sel { border-color: var(--jade); background: var(--accent-w); }
+.pick .p1 { font-family: var(--mono); font-size: 14px; }
+.pick .p2 { font-size: 13px; color: var(--muted); display: block; }
+.pick .pamt { font-family: var(--mono); font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.tally {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  padding: 9px 12px;
+  border: 1px dashed var(--rule);
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tally.balanced { border-style: solid; border-color: var(--jade); color: var(--jade); }
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+button.act {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--ground);
+  cursor: pointer;
+}
+
+button.act.ghost { background: transparent; color: var(--ink); border-color: var(--rule); }
+button.act:disabled { opacity: 0.4; cursor: not-allowed; }
+button.act:hover:not(:disabled) { filter: brightness(1.1); }
+button.act:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.decided {
+  font-size: 14.5px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--jade);
+  background: var(--ground);
+}
+
+.decided b { font-family: var(--mono); font-weight: 500; }
+
+textarea.note {
+  font-family: var(--sans);
+  font-size: 14.5px;
+  padding: 8px 10px;
+  min-height: 52px;
+  resize: vertical;
+  color: var(--ink);
+  background: var(--ground);
+  border: 1px solid var(--rule);
+}
+
+textarea.note:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+textarea.csvout {
+  font-family: var(--mono);
+  font-size: 12px;
+  min-height: 110px;
+  white-space: pre;
+  margin-top: 12px;
+  width: 100%;
+}
+
+#csvhint { margin: 8px 0 0; color: var(--muted); font-size: 14px; }
+#csvhint code { font-family: var(--mono); font-size: 13px; background: var(--sunk); padding: 1px 5px; }
+
+footer {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--rule);
+  margin: 0 8px 0 22px;
+  padding: 18px 0 40px 0;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 22px;
+}
+
+@media (max-width: 860px) {
+  .page { grid-template-columns: minmax(0, 1fr); }
+  .rail { position: static; border-right: none; border-bottom: 1px solid var(--rule); }
+  main { padding: 28px 22px 70px; }
+  .calib { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .headline { text-align: left; }
+  footer { margin: 0 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="page">
+  <aside class="rail">
+    <div>
+      <h1 class="wordmark">Reconciliation<span>Desk</span></h1>
+      <div class="stamp" id="stamp"></div>
+    </div>
+
+    <div class="railgroup">
+      <h2>Sources</h2>
+      <div class="facts" id="sources"></div>
+    </div>
+
+    <div class="railgroup">
+      <h2>Cash position</h2>
+      <svg class="spark" id="spark" role="img" aria-labelledby="sparktitle"><title id="sparktitle">Running bank balance across the statement period</title></svg>
+      <div class="cashline"><span class="lo" id="cashlo"></span><span id="cashhi"></span></div>
+    </div>
+
+    <div class="railgroup who-rail">
+      <h2>Reviewing as</h2>
+      <select id="reviewer" aria-label="Who is reviewing"></select>
+      <div class="tally-rail" id="mytally"></div>
+    </div>
+
+    <div class="railgroup">
+      <h2>This run</h2>
+      <div class="facts" id="runfacts"></div>
+    </div>
+  </aside>
+
+  <main>
+    <header class="masthead">
+      <p class="eyebrow">Track 04, AI Finance Controller</p>
+      <h1>Every bank line accounted for, or handed back with reasons.</h1>
+      <p class="lede">
+        The agent reconciles an accounts receivable ledger against a bank statement
+        and a payment processor settlement file, then routes each item three ways:
+        settled, escalated to a controller, or asserted unmatchable.
+      </p>
+    </header>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="Views"></nav>
+
+    <section class="panel" id="panel-result" role="tabpanel" aria-labelledby="tab-result">
+      <div class="calib">
+        <div class="scale">
+          <div class="track" id="track"></div>
+          <div class="ticklabels" id="ticks"></div>
+        </div>
+        <div class="headline">
+          <b class="big" id="bigf1"></b>
+          <span class="cap">Matching F1</span>
+          <span class="gain" id="gain"></span>
+        </div>
+      </div>
+
+      <div class="sechead">
+        <h2 class="title">Disposition</h2>
+        <p id="dispnote"></p>
+      </div>
+      <div class="bar" id="dispbar"></div>
+      <div class="legend" id="displegend"></div>
+    </section>
+
+    <section class="panel" id="panel-accuracy" role="tabpanel" aria-labelledby="tab-accuracy" hidden>
+      <div class="sechead">
+        <h2 class="title">Where it holds and where it slips</h2>
+        <p>Exact set equality on both sides. No partial credit.</p>
+      </div>
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr>
+              <th>Scenario</th><th>Truth</th><th>Found</th><th>Wrong</th>
+              <th>Missed</th><th>Precision</th><th>Recall</th><th>F1</th>
+            </tr>
+          </thead>
+          <tbody id="ledger"></tbody>
+          <tfoot id="ledgerfoot"></tfoot>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-residue" role="tabpanel" aria-labelledby="tab-residue" hidden>
+      <div class="sechead">
+        <h2 class="title">The ambiguous residue</h2>
+        <p id="queuenote"></p>
+      </div>
+      <div class="queue" id="queue"></div>
+    </section>
+
+    <section class="panel" id="panel-review" role="tabpanel" aria-labelledby="tab-review" hidden>
+      <div class="sechead">
+        <h2 class="title">Review station</h2>
+        <p id="stationnote"></p>
+      </div>
+      <p class="lede">
+        What the agent could not settle, in front of a person who can. Attach one
+        or more credits to an invoice and the tally tells you when it balances.
+        Nothing here is graded against the answer key, so declining to match is a
+        real option and often the right one.
+      </p>
+      <div class="filters" id="filters"></div>
+      <div class="station">
+        <div class="qlist" id="qlist"></div>
+        <div class="detail" id="detail"></div>
+      </div>
+      <div class="actions" style="margin-top:14px">
+        <button type="button" class="act ghost" id="export">Export decisions as CSV</button>
+        <button type="button" class="act ghost" id="copy">Copy to clipboard</button>
+        <button type="button" class="act ghost" id="clearall">Clear my decisions</button>
+      </div>
+      <textarea class="note csvout" id="csvout" readonly hidden aria-label="Exported decisions as CSV"></textarea>
+      <p class="sub" id="csvhint" hidden>
+        Save this as <code>human_decisions.csv</code> next to <code>reconcile.py</code>,
+        then run <code>python apply_review.py</code> to fold it back in and re-score.
+      </p>
+    </section>
+
+    <section class="panel" id="panel-trace" role="tabpanel" aria-labelledby="tab-trace" hidden>
+      <div class="sechead">
+        <h2 class="title">Decision inspector</h2>
+        <p>Every decision keeps its candidates and their feature scores.</p>
+      </div>
+      <div class="finder">
+        <input type="search" id="find" placeholder="TXN-000044 or INV-000078" aria-label="Find a transaction or invoice" list="ids">
+        <datalist id="ids"></datalist>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="trace" id="trace"></div>
+    </section>
+  </main>
+
+  <footer id="foot"></footer>
+</div>
+
+<script id="run" type="application/json">__RUN_DATA__</script>
+<script>
+const RUN = JSON.parse(document.getElementById("run").textContent);
+const $ = (id) => document.getElementById(id);
+
+const inr = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const pct = (x) => (x * 100).toFixed(1) + "%";
+
+// Indian short scale. A controller reads 25.5L, not 2,550,000.
+function shortInr(n) {
+  const a = Math.abs(n);
+  if (a >= 1e7) return "₹" + (n / 1e7).toFixed(2) + "Cr";
+  if (a >= 1e5) return "₹" + (n / 1e5).toFixed(2) + "L";
+  return inr.format(n);
+}
+
+// Evidence as a short sentence a person can read. The raw feature dict is kept
+// for the inspector, which is where someone goes when they want all of it.
+function evidence(f) {
+  if (!f) return "";
+  const bits = [];
+  if (f.ref_exact) bits.push("reference matches");
+  else if (f.ref_prefix) bits.push("partial reference");
+  else if ("ref_exact" in f) bits.push("no reference survived");
+  if (typeof f.name_similarity === "number") bits.push("name " + Math.round(f.name_similarity * 100) + "% similar");
+  if (typeof f.date_delta === "number") bits.push(f.date_delta + " days from due");
+  if (f.amount_delta_pct === 0) bits.push("exact amount");
+  return bits.join(", ");
+}
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+/* ---------- rail ---------- */
+
+$("stamp").textContent = RUN.meta.data_dir + " · " + RUN.meta.built.slice(0, 10);
+
+const sources = [
+  ["Invoices", RUN.meta.invoices],
+  ["Bank lines", RUN.meta.bank_lines],
+  ["Payouts", RUN.meta.payouts],
+  ["Truth rows", RUN.meta.ground_truth_rows],
+];
+for (const [k, v] of sources) {
+  const row = el("div");
+  row.append(el("span", null, k), el("b", null, String(v)));
+  $("sources").append(row);
+}
+
+// Roll the per-model counts into one number. Which model answered which item is
+// on the item itself, so the rail does not need to carry the breakdown.
+const byRules = RUN.deciders.rules || 0;
+const byModel = Object.entries(RUN.deciders)
+  .filter(([k]) => k !== "rules").reduce((a, [, v]) => a + v, 0);
+const runfacts = [
+  ["Elapsed", RUN.meta.elapsed + "s"],
+  ["Settled by rules", String(byRules)],
+  ["Escalated", String(byModel)],
+];
+for (const [k, v] of runfacts) {
+  const row = el("div");
+  row.append(el("span", null, k), el("b", null, String(v)));
+  $("runfacts").append(row);
+}
+
+/* ---------- cash sparkline ---------- */
+
+(function sparkline() {
+  const svg = $("spark");
+  const series = RUN.cash.map((d) => d[1]);
+  if (!series.length) return;
+  const W = 210, H = 54, PAD = 3;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  svg.setAttribute("preserveAspectRatio", "none");
+  const lo = Math.min(...series), hi = Math.max(...series);
+  const span = hi - lo || 1;
+  const x = (i) => PAD + (i / (series.length - 1)) * (W - PAD * 2);
+  const y = (v) => PAD + (1 - (v - lo) / span) * (H - PAD * 2);
+  const pts = series.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+
+  const ns = "http://www.w3.org/2000/svg";
+  const area = document.createElementNS(ns, "polygon");
+  area.setAttribute("points", `${PAD},${H - PAD} ${pts} ${W - PAD},${H - PAD}`);
+  area.setAttribute("fill", "var(--accent-w)");
+  const line = document.createElementNS(ns, "polyline");
+  line.setAttribute("points", pts);
+  line.setAttribute("fill", "none");
+  line.setAttribute("stroke", "var(--accent)");
+  line.setAttribute("stroke-width", "1.4");
+  const dot = document.createElementNS(ns, "circle");
+  dot.setAttribute("cx", x(series.length - 1));
+  dot.setAttribute("cy", y(series[series.length - 1]));
+  dot.setAttribute("r", "2.6");
+  dot.setAttribute("fill", "var(--accent)");
+  svg.append(area, line, dot);
+
+  $("cashlo").textContent = "low " + shortInr(lo);
+  $("cashhi").textContent = "close " + shortInr(series[series.length - 1]);
+})();
+
+/* ---------- calibration scale ---------- */
+
+(function calibration() {
+  const floor = RUN.headline.baseline_f1 * 100;
+  const agent = RUN.headline.f1 * 100;
+  const track = $("track");
+
+  const base = el("span", "seg floor");
+  base.style.width = floor + "%";
+  const gain = el("span", "seg gain");
+  gain.style.left = floor + "%";
+  gain.style.width = (agent - floor) + "%";
+  const markFloor = el("span", "tick");
+  markFloor.style.left = floor + "%";
+  const markAgent = el("span", "tick");
+  markAgent.style.left = agent + "%";
+  track.append(base, gain, markFloor, markAgent);
+
+  const marks = [
+    [0, "0", "no matches", "edge-l"],
+    [floor, floor.toFixed(1), "greedy floor", ""],
+    [agent, agent.toFixed(1), "this agent", ""],
+    [100, "100", "perfect", "edge-r"],
+  ];
+  for (const [at, value, label, edge] of marks) {
+    const t = el("div", "tl " + edge);
+    t.style.left = at + "%";
+    t.append(el("span", "v", value), el("span", "k", label));
+    $("ticks").append(t);
+  }
+
+  $("bigf1").textContent = agent.toFixed(1) + "%";
+  $("gain").textContent = "+" + (agent - floor).toFixed(1) + " over the floor";
+})();
+
+/* ---------- disposition ---------- */
+
+(function disposition() {
+  const order = [
+    ["match", "b-match", "Settled", "matched to an invoice, or flagged as a duplicate credit"],
+    ["review", "b-review", "Held for review", "a plausible candidate, but not enough margin to assert it"],
+    ["exception", "b-exception", "Exception", "asserted unmatchable and reported"],
+    ["out_of_scope", "b-scope", "Not receivable", "payroll, rent, GST, vendor runs, filtered before matching"],
+  ];
+  const total = Object.values(RUN.routes).reduce((a, b) => a + b, 0);
+  $("dispnote").textContent = total + " decisions, every source row accounted for";
+
+  for (const [key, cls, label, note] of order) {
+    const n = RUN.routes[key] || 0;
+    if (!n) continue;
+    const seg = el("span", cls, n >= total * 0.06 ? String(n) : "");
+    seg.style.width = (n / total) * 100 + "%";
+    seg.title = label + ": " + n;
+    $("dispbar").append(seg);
+
+    const row = el("div");
+    const swatch = el("i");
+    swatch.style.background = getComputedStyle(document.documentElement)
+      .getPropertyValue(cls === "b-match" ? "--jade" : cls === "b-review" ? "--brass" : cls === "b-exception" ? "--clay" : "--slate");
+    const txt = el("span");
+    txt.append(el("b", null, String(n)), document.createTextNode(" " + label + ", " + note));
+    row.append(swatch, txt);
+    $("displegend").append(row);
+  }
+})();
+
+/* ---------- scenario ledger ---------- */
+
+(function ledger() {
+  const body = $("ledger");
+  const pretty = (s) => s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+  for (const s of RUN.scenarios) {
+    const tr = el("tr");
+    tr.append(el("td", null, pretty(s.reason)));
+    tr.append(el("td", null, String(s.gt)));
+    tr.append(el("td", null, String(s.tp)));
+    tr.append(el("td", s.fp ? "miss" : "zero", String(s.fp)));
+    tr.append(el("td", s.fn ? "miss" : "zero", String(s.fn)));
+    tr.append(el("td", null, pct(s.precision)));
+    tr.append(el("td", null, pct(s.recall)));
+
+    const cell = el("td");
+    const meter = el("div", "meter");
+    const track = el("span", "meter-track");
+    const fill = el("span", "meter-fill" + (s.f1 < 0.95 ? " warn" : ""));
+    fill.style.width = (s.f1 * 100).toFixed(1) + "%";
+    track.append(fill);
+    meter.append(el("span", null, pct(s.f1)), track);
+    cell.append(meter);
+    tr.append(cell);
+    body.append(tr);
+  }
+
+  const h = RUN.headline, e = RUN.exceptions;
+  const foot = $("ledgerfoot");
+  const totals = [
+    ["All matching", h.matchable, h.matched, "", "", pct(h.precision), pct(h.recall), pct(h.f1)],
+    ["Exception detection", e.gt, e.tp, String(e.fp), String(e.fn), pct(e.precision), pct(e.recall), pct(e.f1)],
+  ];
+  for (const cells of totals) {
+    const tr = el("tr");
+    cells.forEach((c) => tr.append(el("td", null, String(c))));
+    foot.append(tr);
+  }
+})();
+
+/* ---------- review queue ---------- */
+
+(function residue() {
+  const box = $("queue");
+  const items = RUN.residue;
+  const risk = items.reduce((a, r) => a + r.amount, 0);
+  const settled = items.filter((r) => r.settled).length;
+
+  $("queuenote").textContent = items.length
+    ? items.length + " items the rules could not settle alone, " + shortInr(risk) + " at stake, "
+      + settled + " resolved by the adjudicator"
+    : "the deterministic core settled everything on its own";
+
+  if (!items.length) {
+    box.append(el("p", "verdict", "Nothing was escalated on this run."));
+    return;
+  }
+
+  items.forEach((r, i) => {
+    const line = RUN.lines[r.item_id];
+    const item = el("details", "item");
+    if (i === 0) item.open = true;
+
+    const sum = el("summary");
+    sum.append(el("span", "rank", String(i + 1)));
+    const id = el("span", "idline");
+    id.append(document.createTextNode(r.item_id + " "), el("em", null, line ? line[0] : ""));
+    sum.append(id);
+    sum.append(el("span", "outcome " + (r.settled ? "settled" : "held"),
+      r.settled ? "settled by " + r.decided_by : "held for review"));
+    sum.append(el("span", "risk", inr.format(r.amount)));
+    item.append(sum);
+
+    const body = el("div", "body");
+    if (line) body.append(el("div", "narration", line[2]));
+
+    const chosen = new Set(r.chosen);
+    const cands = el("div", "cands");
+    r.candidates.forEach((c, n) => {
+      const invId = c.invoice_ids[0] || "";
+      const inv = RUN.invoices[invId];
+      const picked = r.settled && chosen.has(invId);
+      const row = el("div", "cand" + (picked ? " chosen" : n === 0 ? " lead" : ""));
+      const who = el("div", "who");
+      who.append(el("b", null, invId), document.createTextNode(inv ? "  " + inv[0] : ""));
+      who.append(el("span", "feat", evidence(c.features)));
+      if (picked) who.append(el("span", "tag", "chosen"));
+      row.append(who, el("span", "sc", (c.score ?? 0).toFixed(3)));
+      cands.append(row);
+    });
+    body.append(cands);
+
+    const margin = r.candidates.length > 1
+      ? (r.candidates[0].score - r.candidates[1].score)
+      : null;
+    const v = el("p", "verdict");
+    const lead = margin !== null
+      ? "Separated by only " + margin.toFixed(3) + ", under the escalation floor. "
+      : "One candidate, not clear enough to assert. ";
+    v.innerHTML = lead + (r.settled
+      ? "Escalated to <b>" + r.decided_by + "</b>, which chose <b>" + r.chosen.join(", ") + "</b>."
+      : "Held for a person rather than asserted as an exception.");
+    body.append(v);
+
+    // The model's own words are worth having, but not worth a paragraph on
+    // every row before anyone asks for it.
+    const reason = r.settled ? r.why : r.action;
+    if (reason) {
+      const more = el("details", "why-model");
+      more.append(el("summary", null, r.settled ? "Why the model chose this" : "Suggested action"));
+      more.append(el("p", null, reason));
+      body.append(more);
+    }
+
+    item.append(body);
+    box.append(item);
+  });
+})();
+
+/* ---------- decision inspector ---------- */
+
+(function inspector() {
+  const byId = new Map();
+  for (const d of RUN.decisions) {
+    for (const t of d.bank_txn_ids) byId.set(t, d);
+    for (const i of d.invoice_ids) byId.set(i, d);
+  }
+
+  const list = $("ids");
+  for (const key of byId.keys()) list.append(el("option", null, key));
+
+  const pretty = (s) => s.replace(/_/g, " ");
+
+  function render(key) {
+    const box = $("trace");
+    box.textContent = "";
+    const d = byId.get(key);
+    if (!d) {
+      box.append(el("p", "empty", "No decision recorded for " + key + ". Try a TXN or INV id from the list."));
+      return;
+    }
+
+    const head = el("div", "head");
+    head.append(el("span", "pill " + d.route, pretty(d.route)));
+    head.append(el("span", "who", key));
+    const inv = RUN.invoices[key], line = RUN.lines[key];
+    if (inv) head.append(el("span", null, inv[0]));
+    if (line) head.append(el("span", null, line[2]));
+    box.append(head);
+
+    const grid = el("div", "grid");
+    const facts = [
+      ["Match type", pretty(d.match_type)],
+      ["Confidence", (d.confidence ?? 0).toFixed(3)],
+      ["Decided by", d.decided_by],
+      ["Invoices", d.invoice_ids.join(", ") || "none"],
+      ["Bank lines", d.bank_txn_ids.join(", ") || "none"],
+    ];
+    if (d.reason_code) facts.push(["Reason", pretty(d.reason_code)]);
+    for (const [k, v] of facts) {
+      const cell = el("div");
+      cell.append(el("span", null, k), el("b", null, v));
+      grid.append(cell);
+    }
+    box.append(grid);
+    box.append(el("p", "why", d.rationale || "no rationale recorded"));
+
+    if (!d.candidates_considered.length) {
+      box.append(el("p", "empty", "No candidate reached the plausibility floor, which is why this was asserted rather than matched."));
+      return;
+    }
+
+    const cands = el("div", "cands");
+    d.candidates_considered.forEach((c, n) => {
+      const row = el("div", "cand" + (n === 0 ? " lead" : ""));
+      const who = el("div", "who");
+      who.append(el("b", null, c.invoice_ids.join(", ") || "no invoice"),
+                 document.createTextNode("  via " + pretty(c.source)));
+      who.append(el("span", "feat", Object.entries(c.features || {})
+        .map(([k, v]) => pretty(k) + " " + v).join("  ·  ")));
+      row.append(who, el("span", "sc", (c.score ?? 0).toFixed(3)));
+      cands.append(row);
+    });
+    box.append(cands);
+  }
+
+  const input = $("find");
+  input.addEventListener("input", () => {
+    const v = input.value.trim().toUpperCase();
+    if (byId.has(v)) render(v);
+  });
+
+  const samples = [
+    [RUN.residue[0] ? RUN.residue[0].item_id : null, "an escalated item"],
+    [RUN.decisions.find((d) => d.match_type === "bundle")?.bank_txn_ids[0], "a bundled payout"],
+    [RUN.decisions.find((d) => d.match_type === "duplicate")?.bank_txn_ids[0], "a duplicate"],
+    [RUN.decisions.find((d) => d.match_type === "fx_band")?.bank_txn_ids[0], "an FX receipt"],
+    [RUN.decisions.find((d) => d.reason_code === "unpaid_invoice")?.invoice_ids[0], "an unpaid invoice"],
+  ].filter(([id]) => id);
+
+  for (const [id, label] of samples) {
+    const b = el("button", "chip", label);
+    b.type = "button";
+    b.addEventListener("click", () => { input.value = id; render(id); });
+    $("chips").append(b);
+  }
+
+  render(samples.length ? samples[0][0] : "");
+})();
+
+/* ---------- review station ---------- */
+
+(function station() {
+  // ponytail: the roster is hardcoded. It exists so a decision has an owner,
+  // which is what makes it auditable. Wire it to a real directory if this ships.
+  const ROSTER = [
+    "A. Iyer, AR lead",
+    "R. Menon, financial controller",
+    "S. Bhatt, AR analyst",
+    "K. Nair, treasury",
+  ];
+  const KEY = "recon-decisions", WHO = "recon-reviewer";
+
+  const load = (k, fallback) => {
+    try { return JSON.parse(localStorage.getItem(k)) ?? fallback; }
+    catch (e) { return fallback; }
+  };
+  const save = (k, v) => {
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private mode */ }
+  };
+
+  let decisions = load(KEY, {});
+  let reviewer = load(WHO, ROSTER[0]);
+  let filter = "all";
+  let current = null;
+  let staged = new Set();
+  let note = "";
+
+  const items = RUN.queue;
+  const byId = new Map(items.map((q) => [q.id, q]));
+  const credits = items.filter((q) => q.kind === "bank_txn" && q.amount > 0);
+  const openInvoices = items.filter((q) => q.kind === "invoice");
+
+  const sel = $("reviewer");
+  for (const person of ROSTER) sel.append(el("option", null, person));
+  sel.value = reviewer;
+  sel.addEventListener("change", () => {
+    reviewer = sel.value;
+    save(WHO, reviewer);
+    paintTally();
+  });
+
+  // ids already consumed by some other decision, so two invoices cannot both
+  // claim the same credit.
+  function consumed(exceptFor) {
+    const used = new Set();
+    for (const [id, d] of Object.entries(decisions)) {
+      if (id === exceptFor) continue;
+      if (d.action !== "matched") continue;
+      used.add(id);
+      for (const t of d.targets) used.add(t);
+    }
+    return used;
+  }
+
+  function paintTally() {
+    const mine = Object.values(decisions).filter((d) => d.reviewer === reviewer);
+    const matched = mine.filter((d) => d.action === "matched").length;
+    $("mytally").innerHTML = mine.length
+      ? "<b>" + matched + "</b> settled, " + (mine.length - matched) + " confirmed as exceptions"
+      : "no decisions recorded yet";
+    const total = Object.keys(decisions).length;
+    $("stationnote").textContent =
+      items.length + " items flagged by the agent, " + total + " worked";
+  }
+
+  function passes(q) {
+    if (filter === "done") return decisions[q.id];
+    if (filter === "credits") return q.kind === "bank_txn" && q.amount > 0;
+    if (filter === "invoices") return q.kind === "invoice";
+    return true;
+  }
+
+  function renderQueue() {
+    const list = $("qlist");
+    list.textContent = "";
+    const shown = items.filter(passes);
+    if (!shown.length) {
+      list.append(el("p", "qsub", "  nothing in this filter"));
+      return;
+    }
+    for (const q of shown) {
+      const done = decisions[q.id];
+      const row = el("button", "qrow" + (q.id === current ? " on" : "") + (done ? " done" : ""));
+      row.type = "button";
+      row.append(el("span", "qid", q.id));
+      row.append(el("span", "qamt", inr.format(Math.abs(q.amount))));
+      row.append(el("span", "qsub", (done ? "✓ " + done.action + "  " : "") + (q.label || q.reason)));
+      row.addEventListener("click", () => { select(q.id); });
+      list.append(row);
+    }
+  }
+
+  function select(id) {
+    current = id;
+    staged = new Set();
+    const d = decisions[id];
+    if (d) { staged = new Set(d.targets); note = d.note || ""; } else { note = ""; }
+    renderQueue();
+    renderDetail();
+  }
+
+  function renderDetail() {
+    const box = $("detail");
+    box.textContent = "";
+    const q = byId.get(current);
+    if (!q) { box.append(el("p", "sub", "Pick an item from the queue.")); return; }
+
+    const isInvoice = q.kind === "invoice";
+    box.append(el("h3", null, q.id + "   " + inr.format(Math.abs(q.amount))));
+    box.append(el("p", "sub", (q.label || "") + "  ·  " + q.sub));
+    box.append(el("p", "sub", "Agent said: " + q.agent));
+
+    const used = consumed(current);
+    const pool = (isInvoice ? credits : openInvoices)
+      .filter((p) => p.id !== q.id && !used.has(p.id));
+    const agentPicks = new Set(q.candidates.flatMap((c) => c.invoice_ids));
+
+    box.append(el("p", "sub", isInvoice
+      ? "Unattached credits. Tick every leg that belongs to this invoice."
+      : "Open invoices. Pick the one this credit settles."));
+
+    const picks = el("div", "picks");
+    for (const p of pool) {
+      const row = el("div", "pick" + (staged.has(p.id) ? " sel" : ""));
+      row.tabIndex = 0;
+      row.setAttribute("role", isInvoice ? "checkbox" : "radio");
+      row.setAttribute("aria-checked", staged.has(p.id) ? "true" : "false");
+      row.append(el("span", "p1", staged.has(p.id) ? "■" : "□"));
+      const mid = el("div");
+      mid.append(el("span", "p1", p.id + (agentPicks.has(p.id) ? "   agent suggested" : "")));
+      mid.append(el("span", "p2", p.label || p.reason));
+      row.append(mid, el("span", "pamt", inr.format(Math.abs(p.amount))));
+      const toggle = () => {
+        if (!isInvoice) staged.clear();
+        if (staged.has(p.id)) staged.delete(p.id); else staged.add(p.id);
+        renderDetail();
+      };
+      row.addEventListener("click", toggle);
+      row.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+      });
+      picks.append(row);
+    }
+    box.append(picks);
+
+    const target = Math.abs(q.amount);
+    const sum = [...staged].reduce((a, id) => a + Math.abs(byId.get(id)?.amount || 0), 0);
+    const gap = Math.round((target - sum) * 100) / 100;
+    const balanced = staged.size > 0 && Math.abs(gap) < 0.01;
+    const tally = el("div", "tally" + (balanced ? " balanced" : ""));
+    tally.append(el("span", null, staged.size + " selected, " + inr.format(sum)));
+    tally.append(el("span", null, balanced ? "balances exactly" : "gap " + inr.format(gap)));
+    box.append(tally);
+
+    const area = el("textarea", "note");
+    area.placeholder = "Note for the audit trail, optional";
+    area.value = note;
+    area.addEventListener("input", () => { note = area.value; });
+    box.append(area);
+
+    const actions = el("div", "actions");
+    const settle = el("button", "act", isInvoice ? "Settle this invoice" : "Match this credit");
+    settle.type = "button";
+    settle.disabled = staged.size === 0;
+    settle.addEventListener("click", () => decide("matched"));
+    const keep = el("button", "act ghost", "Confirm as an exception");
+    keep.type = "button";
+    keep.addEventListener("click", () => decide("kept"));
+    actions.append(settle, keep);
+    if (decisions[current]) {
+      const undo = el("button", "act ghost", "Clear decision");
+      undo.type = "button";
+      undo.addEventListener("click", () => {
+        delete decisions[current];
+        save(KEY, decisions);
+        select(current);
+        paintTally();
+      });
+      actions.append(undo);
+    }
+    box.append(actions);
+
+    const d = decisions[current];
+    if (d) {
+      const said = el("div", "decided");
+      said.innerHTML = d.action === "matched"
+        ? "<b>" + d.reviewer + "</b> settled this against <b>" + d.targets.join(", ") + "</b>"
+        : "<b>" + d.reviewer + "</b> confirmed this as a genuine exception";
+      box.append(said);
+    }
+  }
+
+  function decide(action) {
+    decisions[current] = {
+      reviewer, action,
+      targets: action === "matched" ? [...staged] : [],
+      note, at: new Date().toISOString().slice(0, 19).replace("T", " "),
+    };
+    save(KEY, decisions);
+    paintTally();
+    renderQueue();
+    renderDetail();
+  }
+
+  function csv() {
+    const rows = [["item_type", "item_id", "action", "matched_ids", "reviewer", "note", "decided_at"]];
+    for (const [id, d] of Object.entries(decisions)) {
+      const q = byId.get(id);
+      rows.push([
+        q ? q.kind : "", id, d.action, d.targets.join("|"),
+        d.reviewer, (d.note || "").replace(/[\r\n",]+/g, " "), d.at,
+      ]);
+    }
+    return rows.map((r) => r.join(",")).join("\n") + "\n";
+  }
+
+  $("export").addEventListener("click", () => {
+    // Always put the CSV on the page. A download works when this file is opened
+    // locally, but the artifact viewer refuses downloads, and a control that
+    // silently does nothing is worse than no control.
+    const text = csv();
+    const out = $("csvout");
+    out.value = text;
+    out.hidden = false;
+    $("csvhint").hidden = false;
+    out.focus();
+    out.select();
+    try {
+      const blob = new Blob([text], { type: "text/csv" });
+      const a = el("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "human_decisions.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (err) { /* viewer blocks downloads, the textarea above is the fallback */ }
+  });
+
+  $("copy").addEventListener("click", async (e) => {
+    // downloads are blocked inside the artifact viewer, so clipboard is the
+    // path that works in both places.
+    try {
+      await navigator.clipboard.writeText(csv());
+      e.target.textContent = "Copied";
+      setTimeout(() => { e.target.textContent = "Copy to clipboard"; }, 1600);
+    } catch (err) {
+      e.target.textContent = "Clipboard blocked";
+    }
+  });
+
+  $("clearall").addEventListener("click", () => {
+    decisions = {};
+    save(KEY, decisions);
+    paintTally();
+    select(current);
+  });
+
+  for (const [key, label] of [["all", "everything"], ["credits", "unattached credits"],
+                              ["invoices", "open invoices"], ["done", "worked"]]) {
+    const b = el("button", "chip" + (key === "all" ? " on" : ""), label);
+    b.type = "button";
+    b.addEventListener("click", () => {
+      filter = key;
+      for (const other of $("filters").children) other.classList.toggle("on", other === b);
+      renderQueue();
+    });
+    $("filters").append(b);
+  }
+
+  paintTally();
+  select(items.length ? items[0].id : null);
+})();
+
+/* ---------- tabs ---------- */
+
+(function tabs() {
+  const defs = [
+    ["result", "Result", null],
+    ["accuracy", "By scenario", RUN.scenarios.length],
+    ["residue", "Escalated", RUN.residue.length],
+    ["review", "Review station", RUN.queue.length],
+    ["trace", "Inspector", null],
+  ];
+  const bar = $("tabs");
+  const panels = new Map(defs.map(([k]) => [k, document.getElementById("panel-" + k)]));
+
+  function show(key) {
+    for (const [k, panel] of panels) {
+      const on = k === key;
+      panel.hidden = !on;
+      const btn = document.getElementById("tab-" + k);
+      btn.setAttribute("aria-selected", on ? "true" : "false");
+      btn.tabIndex = on ? 0 : -1;
+    }
+    try { localStorage.setItem("recon-tab", key); } catch (e) { /* private mode */ }
+    if (location.hash.slice(1) !== key) {
+      history.replaceState(null, "", "#" + key);
+    }
+  }
+
+  defs.forEach(([key, label, count], i) => {
+    const b = el("button", null, label);
+    b.type = "button";
+    b.id = "tab-" + key;
+    b.setAttribute("role", "tab");
+    b.setAttribute("aria-controls", "panel-" + key);
+    if (count !== null) b.append(el("span", "n", String(count)));
+    b.addEventListener("click", () => show(key));
+    b.addEventListener("keydown", (e) => {
+      const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (!step) return;
+      e.preventDefault();
+      const next = defs[(i + step + defs.length) % defs.length][0];
+      show(next);
+      document.getElementById("tab-" + next).focus();
+    });
+    bar.append(b);
+  });
+
+  // A pasted #hash wins, so a presenter can link straight to one view. Otherwise
+  // pick up where this viewer left off, and fall back to the headline result.
+  let start = "result";
+  try { start = localStorage.getItem("recon-tab") || start; } catch (e) { /* private mode */ }
+  const hash = location.hash.slice(1);
+  if (panels.has(hash)) start = hash;
+  show(panels.has(start) ? start : "result");
+})();
+
+/* ---------- footer ---------- */
+
+(function footer() {
+  const bits = [
+    "Deterministic core, LLM only on the ambiguous residue",
+    "Money in Decimal throughout",
+    "Scored by score.py, floor from adversarial_audit.py",
+    "Built offline from results/, no network at run time",
+  ];
+  for (const b of bits) $("foot").append(el("span", null, b));
+})();
+</script>
