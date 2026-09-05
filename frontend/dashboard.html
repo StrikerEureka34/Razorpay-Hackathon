@@ -1,4 +1,9 @@
-<title>Reconciliation Desk</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZeroDrift</title>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,400..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 
@@ -21,6 +26,9 @@
   --clay:     #A33A2B;
   --slate:    #4F5F64;
   --focus:    #0B5563;
+  /* Interactive component border: WCAG 1.4.11 requires 3:1.
+     --hairline alone is 1.16:1 on --ground; this value is ~3.1:1. */
+  --pick-bdr: #6B8A8E;
 
   --display: "Bricolage Grotesque", "Trebuchet MS", sans-serif;
   --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
@@ -44,6 +52,7 @@
     --clay:     #E4795F;
     --slate:    #84979C;
     --focus:    #5FBACB;
+    --pick-bdr: var(--rule);
   }
 }
 
@@ -79,9 +88,9 @@ body {
 
 .page {
   display: grid;
-  grid-template-columns: 268px minmax(0, 1fr);
+  grid-template-columns: 280px minmax(0, 1fr);
   gap: 0;
-  max-width: 1320px;
+  max-width: 1360px;
   margin: 0 auto;
   align-items: start;
 }
@@ -91,11 +100,14 @@ body {
 .rail {
   position: sticky;
   top: 0;
-  padding: 34px 26px 40px 22px;
+  padding: 34px 24px 40px 22px;
   border-right: 1px solid var(--rule);
   display: flex;
   flex-direction: column;
   gap: 26px;
+  max-height: 100vh;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 .wordmark {
@@ -174,7 +186,7 @@ section { min-width: 0; }
 
 .masthead { max-width: 72ch; }
 
-/* ---------- tabs ---------- */
+/* ---------- tabs (horizontal: used only for review sub-tabs .rtabs) ---------- */
 
 .tabs {
   display: flex;
@@ -212,11 +224,127 @@ section { min-width: 0; }
 
 .tabs button[aria-selected="true"] .n { color: var(--accent); }
 
+/* ---------- sidebar navigation ---------- */
+
+.sidenav {
+  display: flex;
+  flex-direction: column;
+  /* Push down to clear the wordmark + stamp */
+  padding-top: 4px;
+}
+
+.navgrp {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 18px;
+}
+
+.navgrp-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 6px 7px;
+}
+
+.sidenav button {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 7px 10px 7px 12px;
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sidenav button:hover { background: var(--sunk); color: var(--ink); }
+
+.sidenav button[aria-selected="true"] {
+  color: var(--ink);
+  border-left-color: var(--accent);
+  background: var(--sunk);
+}
+
+.sidenav button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+.sidenav .n {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
+  margin-left: auto;
+}
+
+.sidenav button[aria-selected="true"] .n { color: var(--accent); }
+
+/* thin rule between wordmark area and the nav */
+.rail-divider { border: none; border-top: 1px solid var(--rule); margin: 0; }
+
+/* ---------- review station sub-tabs ---------- */
+
+.rtabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 14px;
+}
+
+.rtabs button {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.rtabs button:hover { color: var(--ink); }
+.rtabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.rtabs button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+
+/* Shown inside queue rows when Admin is viewing: identifies the assigned reviewer */
+.assignee-chip {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  background: var(--sunk);
+  color: var(--muted);
+  margin-left: 7px;
+  vertical-align: middle;
+}
+
+[hidden] {
+  display: none !important;
+}
+
 .panel {
   display: flex;
   flex-direction: column;
   gap: 26px;
   padding-top: 12px;
+}
+
+.panel[hidden] {
+  display: none !important;
 }
 
 .panel > .sechead { margin-bottom: 0; }
@@ -374,18 +502,26 @@ h2.title {
 
 .legend {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px 24px;
+  flex-wrap: nowrap;
+  gap: 24px;
+  align-items: center;
   margin-top: 14px;
+  overflow-x: auto;
 }
 
-.legend div { display: flex; align-items: baseline; gap: 8px; font-size: 14px; color: var(--muted); }
+.legend div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+}
 
 .legend i {
   width: 9px; height: 9px;
   flex: none;
   border-radius: 50%;
-  transform: translateY(1px);
 }
 
 .legend b { color: var(--ink); font-family: var(--mono); font-weight: 500; font-variant-numeric: tabular-nums; }
@@ -689,7 +825,7 @@ button.chip.on { color: var(--ground); background: var(--accent); border-color: 
   gap: 11px;
   align-items: center;
   padding: 8px 11px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--pick-bdr);
   background: var(--ground);
   cursor: pointer;
 }
@@ -769,10 +905,9 @@ textarea.csvout {
 #csvhint code { font-family: var(--mono); font-size: 13px; background: var(--sunk); padding: 1px 5px; }
 
 footer {
-  grid-column: 1 / -1;
   border-top: 1px solid var(--rule);
-  margin: 0 8px 0 22px;
-  padding: 18px 0 40px 0;
+  padding: 24px 0 36px 0;
+  margin-top: 36px;
   color: var(--faint);
   font-family: var(--mono);
   font-size: 11px;
@@ -783,62 +918,65 @@ footer {
 
 @media (max-width: 860px) {
   .page { grid-template-columns: minmax(0, 1fr); }
-  .rail { position: static; border-right: none; border-bottom: 1px solid var(--rule); }
+  .rail { position: static; border-right: none; border-bottom: 1px solid var(--rule); max-height: none; }
   main { padding: 28px 22px 70px; }
   .calib { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .headline { text-align: left; }
-  footer { margin: 0 22px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
 </style>
+</head>
+<body>
 
 <div class="page">
   <aside class="rail">
     <div>
-      <h1 class="wordmark">Reconciliation<span>Desk</span></h1>
+      <h1 class="wordmark">Zero<span>Drift</span></h1>
       <div class="stamp" id="stamp"></div>
     </div>
 
-    <div class="railgroup">
+    <hr class="rail-divider">
+
+    <!-- Main navigation: injected by the tabs IIFE below -->
+    <nav class="sidenav" id="sidenav" role="tablist" aria-label="Sections"></nav>
+
+    <div class="railgroup" id="rail-sources">
       <h2>Sources</h2>
       <div class="facts" id="sources"></div>
     </div>
 
-    <div class="railgroup">
+    <div class="railgroup" id="rail-cash">
       <h2>Cash position</h2>
       <svg class="spark" id="spark" role="img" aria-labelledby="sparktitle"><title id="sparktitle">Running bank balance across the statement period</title></svg>
       <div class="cashline"><span class="lo" id="cashlo"></span><span id="cashhi"></span></div>
     </div>
 
-    <div class="railgroup who-rail">
+    <div class="railgroup who-rail" id="rail-reviewer">
       <h2>Reviewing as</h2>
       <select id="reviewer" aria-label="Who is reviewing"></select>
       <div class="tally-rail" id="mytally"></div>
     </div>
 
-    <div class="railgroup">
+    <div class="railgroup" id="rail-runfacts">
       <h2>This run</h2>
       <div class="facts" id="runfacts"></div>
     </div>
   </aside>
 
   <main>
-    <header class="masthead">
-      <p class="eyebrow">Track 04, AI Finance Controller</p>
-      <h1>Every bank line accounted for, or handed back with reasons.</h1>
-      <p class="lede">
-        The agent reconciles an accounts receivable ledger against a bank statement
-        and a payment processor settlement file, then routes each item three ways:
-        settled, escalated to a controller, or asserted unmatchable.
-      </p>
-    </header>
-
-    <nav class="tabs" id="tabs" role="tablist" aria-label="Views"></nav>
+    <!-- Each section owns its own header: no shared masthead above the tabs -->
 
     <section class="panel" id="panel-result" role="tabpanel" aria-labelledby="tab-result">
+      <header class="masthead">
+        <h1>Every bank line accounted for, or handed back with reasons.</h1>
+        <p class="lede">
+          Reconciles accounts receivable against bank statements and processor
+          settlement files, routing each item to settled, escalated, or unmatchable.
+        </p>
+      </header>
       <div class="calib">
         <div class="scale">
           <div class="track" id="track"></div>
@@ -891,17 +1029,16 @@ footer {
         <h2 class="title">Review station</h2>
         <p id="stationnote"></p>
       </div>
-      <p class="lede">
-        What the agent could not settle, in front of a person who can. Attach one
-        or more credits to an invoice and the tally tells you when it balances.
-        Nothing here is graded against the answer key, so declining to match is a
-        real option and often the right one.
-      </p>
-      <div class="filters" id="filters"></div>
-      <div class="station">
-        <div class="qlist" id="qlist"></div>
-        <div class="detail" id="detail"></div>
+      <nav class="rtabs" id="rtabs" role="tablist" aria-label="Review views"></nav>
+      <div id="rpanel-queue" role="tabpanel" aria-labelledby="rtab-queue">
+        <div class="filters" id="filters"></div>
+        <div class="station">
+          <div class="qlist" id="qlist"></div>
+          <div class="detail" id="detail"></div>
+        </div>
       </div>
+      <div id="rpanel-done" role="tabpanel" aria-labelledby="rtab-done" hidden></div>
+      <div id="rpanel-overview" role="tabpanel" aria-labelledby="rtab-overview" hidden></div>
       <div class="actions" style="margin-top:14px">
         <button type="button" class="act ghost" id="export">Export decisions as CSV</button>
         <button type="button" class="act ghost" id="copy">Copy to clipboard</button>
@@ -926,9 +1063,9 @@ footer {
       </div>
       <div class="trace" id="trace"></div>
     </section>
-  </main>
 
-  <footer id="foot"></footer>
+    <footer id="foot"></footer>
+  </main>
 </div>
 
 <script id="run" type="application/json">__RUN_DATA__</script>
@@ -958,6 +1095,8 @@ function evidence(f) {
   if (typeof f.name_similarity === "number") bits.push("name " + Math.round(f.name_similarity * 100) + "% similar");
   if (typeof f.date_delta === "number") bits.push(f.date_delta + " days from due");
   if (f.amount_delta_pct === 0) bits.push("exact amount");
+  else if (typeof f.amount_delta_pct === "number")
+    bits.push("amount off by " + (f.amount_delta_pct * 100).toFixed(1) + "%");
   return bits.join(", ");
 }
 
@@ -1074,15 +1213,15 @@ for (const [k, v] of runfacts) {
 
 (function disposition() {
   const order = [
-    ["match", "b-match", "Settled", "matched to an invoice, or flagged as a duplicate credit"],
-    ["review", "b-review", "Held for review", "a plausible candidate, but not enough margin to assert it"],
-    ["exception", "b-exception", "Exception", "asserted unmatchable and reported"],
-    ["out_of_scope", "b-scope", "Not receivable", "payroll, rent, GST, vendor runs, filtered before matching"],
+    ["match", "b-match", "Settled"],
+    ["review", "b-review", "Held for review"],
+    ["exception", "b-exception", "Exceptions"],
+    ["out_of_scope", "b-scope", "Non-receivable"],
   ];
   const total = Object.values(RUN.routes).reduce((a, b) => a + b, 0);
   $("dispnote").textContent = total + " decisions, every source row accounted for";
 
-  for (const [key, cls, label, note] of order) {
+  for (const [key, cls, label] of order) {
     const n = RUN.routes[key] || 0;
     if (!n) continue;
     const seg = el("span", cls, n >= total * 0.06 ? String(n) : "");
@@ -1095,7 +1234,7 @@ for (const [k, v] of runfacts) {
     swatch.style.background = getComputedStyle(document.documentElement)
       .getPropertyValue(cls === "b-match" ? "--jade" : cls === "b-review" ? "--brass" : cls === "b-exception" ? "--clay" : "--slate");
     const txt = el("span");
-    txt.append(el("b", null, String(n)), document.createTextNode(" " + label + ", " + note));
+    txt.append(el("b", null, String(n)), document.createTextNode(" " + label));
     row.append(swatch, txt);
     $("displegend").append(row);
   }
@@ -1270,7 +1409,10 @@ for (const [k, v] of runfacts) {
     box.append(el("p", "why", d.rationale || "no rationale recorded"));
 
     if (!d.candidates_considered.length) {
-      box.append(el("p", "empty", "No candidate reached the plausibility floor, which is why this was asserted rather than matched."));
+      const msg = d.route === "out_of_scope"
+        ? "Filtered as an operating outflow before matching ran - no candidates were sought."
+        : "No candidate reached the plausibility floor, which is why this was asserted rather than matched.";
+      box.append(el("p", "empty", msg));
       return;
     }
 
@@ -1315,14 +1457,18 @@ for (const [k, v] of runfacts) {
 /* ---------- review station ---------- */
 
 (function station() {
-  // ponytail: the roster is hardcoded. It exists so a decision has an owner,
-  // which is what makes it auditable. Wire it to a real directory if this ships.
+  // "Admin" sees all items and all decisions across every reviewer.
+  // Named reviewers are each assigned a dedicated slice of the queue so work
+  // is partitioned without overlap. Assignment is deterministic on item id,
+  // so it survives page reloads and does not require a server.
   const ROSTER = [
+    "Admin",
     "A. Iyer, AR lead",
     "R. Menon, financial controller",
     "S. Bhatt, AR analyst",
     "K. Nair, treasury",
   ];
+  const NON_ADMIN = ROSTER.slice(1);
   const KEY = "recon-decisions", WHO = "recon-reviewer";
 
   const load = (k, fallback) => {
@@ -1334,16 +1480,33 @@ for (const [k, v] of runfacts) {
   };
 
   let decisions = load(KEY, {});
-  let reviewer = load(WHO, ROSTER[0]);
-  let filter = "all";
-  let current = null;
-  let staged = new Set();
-  let note = "";
+  let reviewer  = load(WHO, ROSTER[0]);
+  let filter    = "all";
+  let current   = null;
+  let staged    = new Set();
+  let note      = "";
+  let rtab      = "queue";
+  // Per-item draft store: picks and notes survive switching between queue rows
+  // without being committed. Cleared when the item is decided or on clearall.
+  const drafts  = {};
 
-  const items = RUN.queue;
-  const byId = new Map(items.map((q) => [q.id, q]));
-  const credits = items.filter((q) => q.kind === "bank_txn" && q.amount > 0);
-  const openInvoices = items.filter((q) => q.kind === "invoice");
+  const items    = RUN.queue;
+  const byId     = new Map(items.map((q) => [q.id, q]));
+  const credits  = items.filter((q) => q.kind === "bank_txn" && q.amount > 0);
+  const openInvs = items.filter((q) => q.kind === "invoice");
+
+  // Stable assignment: each item belongs to exactly one reviewer (never Admin).
+  function assignee(itemId) {
+    const h = [...itemId].reduce((a, c) => a + c.charCodeAt(0), 0);
+    return NON_ADMIN[h % NON_ADMIN.length];
+  }
+
+  const isAdmin = () => reviewer === "Admin";
+  const myItems = () => isAdmin()
+    ? items
+    : items.filter((q) => assignee(q.id) === reviewer);
+
+  /* ── reviewer picker ──────────────────────────────────── */
 
   const sel = $("reviewer");
   for (const person of ROSTER) sel.append(el("option", null, person));
@@ -1352,10 +1515,59 @@ for (const [k, v] of runfacts) {
     reviewer = sel.value;
     save(WHO, reviewer);
     paintTally();
+    buildRTabs();
+    showRTab("queue");
+    const vis = myItems();
+    if (!vis.find((q) => q.id === current)) select(vis[0]?.id ?? null);
+    else { renderQueue(); renderDetail(); }
   });
 
-  // ids already consumed by some other decision, so two invoices cannot both
-  // claim the same credit.
+  /* ── review sub-tabs ──────────────────────────────────── */
+
+  function buildRTabs() {
+    const bar = $("rtabs");
+    bar.textContent = "";
+    const defs = [
+      ["queue",    isAdmin() ? "All items" : "My queue"],
+      ["done",     "Done"],
+    ];
+    if (isAdmin()) defs.push(["overview", "Overview"]);
+
+    defs.forEach(([key, label], i) => {
+      const b = el("button", null, label);
+      b.type = "button";
+      b.id = "rtab-" + key;
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-controls", "rpanel-" + key);
+      b.setAttribute("aria-selected", rtab === key ? "true" : "false");
+      b.tabIndex = rtab === key ? 0 : -1;
+      b.addEventListener("click", () => showRTab(key));
+      b.addEventListener("keydown", (e) => {
+        const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (!step) return;
+        e.preventDefault();
+        const next = defs[(i + step + defs.length) % defs.length][0];
+        showRTab(next);
+        $("rtab-" + next)?.focus();
+      });
+      bar.append(b);
+    });
+  }
+
+  function showRTab(key) {
+    rtab = key;
+    ["queue", "done", "overview"].forEach((k) => {
+      const p = $("rpanel-" + k);
+      if (p) p.hidden = (k !== key);
+    });
+    buildRTabs();
+    if (key === "done")     renderDone();
+    if (key === "overview") renderOverview();
+    if (key === "queue")    { renderQueue(); renderDetail(); }
+  }
+
+  /* ── consumed guard ───────────────────────────────────── */
+
   function consumed(exceptFor) {
     const used = new Set();
     for (const [id, d] of Object.entries(decisions)) {
@@ -1367,23 +1579,41 @@ for (const [k, v] of runfacts) {
     return used;
   }
 
+  /* ── tally rail ───────────────────────────────────────── */
+
   function paintTally() {
-    const mine = Object.values(decisions).filter((d) => d.reviewer === reviewer);
-    const matched = mine.filter((d) => d.action === "matched").length;
-    $("mytally").innerHTML = mine.length
-      ? "<b>" + matched + "</b> settled, " + (mine.length - matched) + " confirmed as exceptions"
-      : "no decisions recorded yet";
     const total = Object.keys(decisions).length;
+    if (isAdmin()) {
+      const matched = Object.values(decisions).filter((d) => d.action === "matched").length;
+      $("mytally").textContent =
+        total + " total - " + matched + " settled, " + (total - matched) + " confirmed as exceptions";
+    } else {
+      const mine    = Object.values(decisions).filter((d) => d.reviewer === reviewer);
+      const matched = mine.filter((d) => d.action === "matched").length;
+      $("mytally").innerHTML = mine.length
+        ? "<b>" + matched + "</b> settled, " + (mine.length - matched) + " confirmed as exceptions"
+        : "no decisions recorded yet";
+    }
+    const vis = myItems();
     $("stationnote").textContent =
-      items.length + " items flagged by the agent, " + total + " worked";
+      vis.length + " item" + (vis.length !== 1 ? "s" : "")
+      + (isAdmin() ? " total" : " assigned to you")
+      + ", " + total + " worked";
   }
 
+  /* ── queue filter ─────────────────────────────────────── */
+
   function passes(q) {
-    if (filter === "done") return decisions[q.id];
-    if (filter === "credits") return q.kind === "bank_txn" && q.amount > 0;
+    // Non-admin reviewers only see their assigned items
+    if (!isAdmin() && assignee(q.id) !== reviewer) return false;
+    if (filter === "done")     return !!decisions[q.id];
+    if (filter === "credits")  return q.kind === "bank_txn" && q.amount > 0;
     if (filter === "invoices") return q.kind === "invoice";
+    if (filter === "charges")  return q.kind === "bank_txn" && q.amount < 0;
     return true;
   }
+
+  /* ── render queue ─────────────────────────────────────── */
 
   function renderQueue() {
     const list = $("qlist");
@@ -1394,78 +1624,136 @@ for (const [k, v] of runfacts) {
       return;
     }
     for (const q of shown) {
-      const done = decisions[q.id];
-      const row = el("button", "qrow" + (q.id === current ? " on" : "") + (done ? " done" : ""));
+      const done    = decisions[q.id];
+      const isDebit = q.amount < 0;
+      const row     = el("button", "qrow"
+        + (q.id === current ? " on"   : "")
+        + (done             ? " done" : ""));
       row.type = "button";
-      row.append(el("span", "qid", q.id));
-      row.append(el("span", "qamt", inr.format(Math.abs(q.amount))));
-      row.append(el("span", "qsub", (done ? "✓ " + done.action + "  " : "") + (q.label || q.reason)));
+      const idSpan = el("span", "qid", q.id);
+      // Admin sees a chip identifying which reviewer owns each row
+      if (isAdmin()) {
+        const chip = el("span", "assignee-chip", assignee(q.id).split(",")[0]);
+        idSpan.append(chip);
+      }
+      row.append(idSpan);
+      // Debits display with "Dr" prefix and red amount: never shown as positive credits
+      row.append(el("span", "qamt" + (isDebit ? " miss" : ""),
+        (isDebit ? "Dr " : "") + inr.format(Math.abs(q.amount))));
+      row.append(el("span", "qsub",
+        (done ? "\u2713 " + done.action + "  " : "") + (q.label || q.reason)));
       row.addEventListener("click", () => { select(q.id); });
       list.append(row);
     }
   }
 
+  /* ── select (with draft persistence) ─────────────────── */
+
   function select(id) {
+    // Stash the current in-progress picks/note before switching rows
+    if (current !== null && !decisions[current]) {
+      drafts[current] = { staged: [...staged], note };
+    }
     current = id;
-    staged = new Set();
-    const d = decisions[id];
-    if (d) { staged = new Set(d.targets); note = d.note || ""; } else { note = ""; }
+    const d     = decisions[id];
+    const draft = drafts[id];
+    if (d)          { staged = new Set(d.targets); note = d.note || ""; }
+    else if (draft) { staged = new Set(draft.staged); note = draft.note; }
+    else            { staged = new Set(); note = ""; }
     renderQueue();
     renderDetail();
   }
 
+  /* ── render detail ────────────────────────────────────── */
+
   function renderDetail() {
     const box = $("detail");
+    // Capture focus before wiping so it can be restored after the rebuild.
+    // This keeps keyboard users positioned on the same pick row after toggling.
+    const prevPickId = document.activeElement?.dataset?.pickId ?? null;
     box.textContent = "";
     const q = byId.get(current);
     if (!q) { box.append(el("p", "sub", "Pick an item from the queue.")); return; }
 
     const isInvoice = q.kind === "invoice";
-    box.append(el("h3", null, q.id + "   " + inr.format(Math.abs(q.amount))));
-    box.append(el("p", "sub", (q.label || "") + "  ·  " + q.sub));
+    const isDebit   = q.amount < 0;
+
+    box.append(el("h3", null,
+      q.id + "   " + (isDebit ? "Dr " : "") + inr.format(Math.abs(q.amount))));
+    box.append(el("p", "sub", (q.label || "") + "  \u00b7  " + q.sub));
     box.append(el("p", "sub", "Agent said: " + q.agent));
 
-    const used = consumed(current);
-    const pool = (isInvoice ? credits : openInvoices)
-      .filter((p) => p.id !== q.id && !used.has(p.id));
-    const agentPicks = new Set(q.candidates.flatMap((c) => c.invoice_ids));
+    // Debits (bank charges, reversals) get the exception path only.
+    // They cannot be matched to invoices and must not appear positive in a tally.
+    if (isDebit) {
+      const warn = el("p", "sub");
+      warn.innerHTML =
+        "<b>Bank charge / debit</b>: cannot be matched to an invoice. " +
+        "Confirm as an exception or clear.";
+      box.append(warn);
+    } else {
+      const used       = consumed(current);
+      const pool       = (isInvoice ? credits : openInvs)
+        .filter((p) => p.id !== q.id && !used.has(p.id));
+      // q.candidates may be empty if the pipeline did not emit ranked picks;
+      // the hint only appears when a candidate is confirmed present in the pool.
+      const agentPicks = new Set(q.candidates.flatMap((c) => c.invoice_ids));
 
-    box.append(el("p", "sub", isInvoice
-      ? "Unattached credits. Tick every leg that belongs to this invoice."
-      : "Open invoices. Pick the one this credit settles."));
+      box.append(el("p", "sub", isInvoice
+        ? "Unattached credits. Tick every leg that belongs to this invoice."
+        : "Open invoices. Pick the one this credit settles."));
 
-    const picks = el("div", "picks");
-    for (const p of pool) {
-      const row = el("div", "pick" + (staged.has(p.id) ? " sel" : ""));
-      row.tabIndex = 0;
-      row.setAttribute("role", isInvoice ? "checkbox" : "radio");
-      row.setAttribute("aria-checked", staged.has(p.id) ? "true" : "false");
-      row.append(el("span", "p1", staged.has(p.id) ? "■" : "□"));
-      const mid = el("div");
-      mid.append(el("span", "p1", p.id + (agentPicks.has(p.id) ? "   agent suggested" : "")));
-      mid.append(el("span", "p2", p.label || p.reason));
-      row.append(mid, el("span", "pamt", inr.format(Math.abs(p.amount))));
-      const toggle = () => {
-        if (!isInvoice) staged.clear();
-        if (staged.has(p.id)) staged.delete(p.id); else staged.add(p.id);
-        renderDetail();
-      };
-      row.addEventListener("click", toggle);
-      row.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+      const picks = el("div", "picks");
+      picks.setAttribute("role", isInvoice ? "group" : "radiogroup");
+      picks.setAttribute("aria-label",
+        isInvoice ? "Select credits to match" : "Select invoice to match");
+
+      pool.forEach((p, idx) => {
+        const row = el("div", "pick" + (staged.has(p.id) ? " sel" : ""));
+        row.tabIndex = 0;
+        row.dataset.pickId = p.id;      // used for focus restore
+        row.setAttribute("role", isInvoice ? "checkbox" : "radio");
+        row.setAttribute("aria-checked", staged.has(p.id) ? "true" : "false");
+        row.setAttribute("aria-setsize", String(pool.length));
+        row.setAttribute("aria-posinset", String(idx + 1));
+        const glyph = el("span");
+        glyph.setAttribute("aria-hidden", "true");
+        glyph.textContent = staged.has(p.id) ? "\u25a0" : "\u25a1";
+        const mid    = el("div");
+        const idLine = el("span", "p1", p.id);
+        if (agentPicks.has(p.id)) {
+          const hint = el("span");
+          hint.textContent = "   agent suggested";
+          hint.style.color = "var(--jade)";
+          idLine.append(hint);
+        }
+        mid.append(idLine, el("span", "p2", p.label || p.reason));
+        row.append(glyph, mid, el("span", "pamt", inr.format(p.amount)));
+        const toggle = () => {
+          if (!isInvoice) staged.clear();
+          if (staged.has(p.id)) staged.delete(p.id); else staged.add(p.id);
+          renderDetail();
+        };
+        row.addEventListener("click", toggle);
+        row.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+        });
+        picks.append(row);
       });
-      picks.append(row);
-    }
-    box.append(picks);
+      box.append(picks);
 
-    const target = Math.abs(q.amount);
-    const sum = [...staged].reduce((a, id) => a + Math.abs(byId.get(id)?.amount || 0), 0);
-    const gap = Math.round((target - sum) * 100) / 100;
-    const balanced = staged.size > 0 && Math.abs(gap) < 0.01;
-    const tally = el("div", "tally" + (balanced ? " balanced" : ""));
-    tally.append(el("span", null, staged.size + " selected, " + inr.format(sum)));
-    tally.append(el("span", null, balanced ? "balances exactly" : "gap " + inr.format(gap)));
-    box.append(tally);
+      // Tally uses signed amounts: Math.abs is not applied so a debit in staged
+      // would correctly reduce the sum, but debits are excluded from both pools.
+      const target   = q.amount;
+      const sum      = [...staged].reduce((a, id) => a + (byId.get(id)?.amount || 0), 0);
+      const gap      = Math.round((target - sum) * 100) / 100;
+      const balanced = staged.size > 0 && Math.abs(gap) < 0.01;
+      const tally    = el("div", "tally" + (balanced ? " balanced" : ""));
+      tally.setAttribute("aria-live", "polite");
+      tally.append(el("span", null, staged.size + " selected, " + inr.format(sum)));
+      tally.append(el("span", null, balanced ? "balances exactly" : "gap " + inr.format(gap)));
+      box.append(tally);
+    }
 
     const area = el("textarea", "note");
     area.placeholder = "Note for the audit trail, optional";
@@ -1474,14 +1762,18 @@ for (const [k, v] of runfacts) {
     box.append(area);
 
     const actions = el("div", "actions");
-    const settle = el("button", "act", isInvoice ? "Settle this invoice" : "Match this credit");
-    settle.type = "button";
-    settle.disabled = staged.size === 0;
-    settle.addEventListener("click", () => decide("matched"));
+    if (!isDebit) {
+      const settle = el("button", "act",
+        isInvoice ? "Settle this invoice" : "Match this credit");
+      settle.type = "button";
+      settle.disabled = staged.size === 0;
+      settle.addEventListener("click", () => decide("matched"));
+      actions.append(settle);
+    }
     const keep = el("button", "act ghost", "Confirm as an exception");
     keep.type = "button";
     keep.addEventListener("click", () => decide("kept"));
-    actions.append(settle, keep);
+    actions.append(keep);
     if (decisions[current]) {
       const undo = el("button", "act ghost", "Clear decision");
       undo.type = "button";
@@ -1495,15 +1787,24 @@ for (const [k, v] of runfacts) {
     }
     box.append(actions);
 
-    const d = decisions[current];
-    if (d) {
+    if (decisions[current]) {
+      const d    = decisions[current];
       const said = el("div", "decided");
+      said.setAttribute("aria-live", "polite");
       said.innerHTML = d.action === "matched"
         ? "<b>" + d.reviewer + "</b> settled this against <b>" + d.targets.join(", ") + "</b>"
         : "<b>" + d.reviewer + "</b> confirmed this as a genuine exception";
       box.append(said);
     }
+
+    // Restore focus to whichever pick row was active before the DOM rebuild
+    if (prevPickId) {
+      const tgt = box.querySelector("[data-pick-id=\"" + prevPickId + "\"]");
+      if (tgt) tgt.focus();
+    }
   }
+
+  /* ── decide ───────────────────────────────────────────── */
 
   function decide(action) {
     decisions[current] = {
@@ -1511,11 +1812,97 @@ for (const [k, v] of runfacts) {
       targets: action === "matched" ? [...staged] : [],
       note, at: new Date().toISOString().slice(0, 19).replace("T", " "),
     };
+    delete drafts[current];   // committed; draft no longer needed
     save(KEY, decisions);
     paintTally();
     renderQueue();
     renderDetail();
   }
+
+  /* ── done tab ─────────────────────────────────────────── */
+
+  function renderDone() {
+    const box  = $("rpanel-done");
+    box.textContent = "";
+    const done = myItems().filter((q) => decisions[q.id]);
+    if (!done.length) {
+      box.append(el("p", "sub", "No decisions recorded yet.")); return;
+    }
+    const list = el("div");
+    list.style.cssText = "display:grid;gap:6px;margin-top:4px";
+    for (const q of done) {
+      const d   = decisions[q.id];
+      const row = el("div");
+      row.style.cssText =
+        "display:flex;gap:12px;align-items:baseline;padding:9px 13px;"
+        + "border:1px solid var(--hairline);background:var(--surface);cursor:pointer";
+      const act = el("span", "pill " + (d.action === "matched" ? "match" : "exception"),
+                     d.action === "matched" ? "settled" : "exception");
+      const who = el("span");
+      who.textContent = d.reviewer;
+      who.style.cssText = "color:var(--muted);font-size:13px;margin-left:auto";
+      row.append(el("span", "qid", q.id), act);
+      if (d.targets.length) {
+        const tgt = el("span");
+        tgt.textContent = "\u2192 " + d.targets.join(", ");
+        tgt.style.cssText = "font-family:var(--mono);font-size:13px;color:var(--muted)";
+        row.append(tgt);
+      }
+      row.append(who);
+      // Click jumps back to the queue with this item selected
+      row.addEventListener("click", () => { showRTab("queue"); select(q.id); });
+      list.append(row);
+    }
+    box.append(list);
+  }
+
+  /* ── overview tab (admin only) ────────────────────────── */
+
+  function renderOverview() {
+    const box = $("rpanel-overview");
+    box.textContent = "";
+    const t     = el("table");
+    const thead = el("thead");
+    const htr   = el("tr");
+    ["Reviewer", "Assigned", "Done", "Settled", "Exceptions", "Remaining"]
+      .forEach((h) => htr.append(el("th", null, h)));
+    thead.append(htr); t.append(thead);
+
+    const tbody = el("tbody");
+    let totA = 0, totD = 0, totS = 0, totE = 0;
+    for (const person of NON_ADMIN) {
+      const asgnd = items.filter((q) => assignee(q.id) === person);
+      const mineD = Object.entries(decisions).filter(([, d]) => d.reviewer === person);
+      const sett  = mineD.filter(([, d]) => d.action === "matched").length;
+      const exc   = mineD.filter(([, d]) => d.action === "kept").length;
+      totA += asgnd.length; totD += mineD.length; totS += sett; totE += exc;
+      const tr = el("tr");
+      [person, asgnd.length, mineD.length, sett, exc, asgnd.length - mineD.length]
+        .forEach((v, i) => {
+          const td = el("td", null, String(v));
+          if (i > 0) { td.style.fontFamily = "var(--mono)"; td.style.textAlign = "right"; }
+          if (i === 5 && Number(v) > 0) td.style.color = "var(--clay)";
+          tr.append(td);
+        });
+      tbody.append(tr);
+    }
+    t.append(tbody);
+
+    const tfoot = el("tfoot");
+    const ftr   = el("tr");
+    ["Total", totA, totD, totS, totE, totA - totD].forEach((v, i) => {
+      const td = el("td", null, String(v));
+      if (i > 0) { td.style.fontFamily = "var(--mono)"; td.style.textAlign = "right"; }
+      ftr.append(td);
+    });
+    tfoot.append(ftr); t.append(tfoot);
+
+    const wrap = el("div", "scroller");
+    wrap.append(t);
+    box.append(wrap);
+  }
+
+  /* ── csv export ───────────────────────────────────────── */
 
   function csv() {
     const rows = [["item_type", "item_id", "action", "matched_ids", "reviewer", "note", "decided_at"]];
@@ -1534,12 +1921,11 @@ for (const [k, v] of runfacts) {
     // locally, but the artifact viewer refuses downloads, and a control that
     // silently does nothing is worse than no control.
     const text = csv();
-    const out = $("csvout");
-    out.value = text;
+    const out  = $("csvout");
+    out.value  = text;
     out.hidden = false;
     $("csvhint").hidden = false;
-    out.focus();
-    out.select();
+    out.focus(); out.select();
     try {
       const blob = new Blob([text], { type: "text/csv" });
       const a = el("a");
@@ -1557,20 +1943,29 @@ for (const [k, v] of runfacts) {
       await navigator.clipboard.writeText(csv());
       e.target.textContent = "Copied";
       setTimeout(() => { e.target.textContent = "Copy to clipboard"; }, 1600);
-    } catch (err) {
-      e.target.textContent = "Clipboard blocked";
-    }
+    } catch (err) { e.target.textContent = "Clipboard blocked"; }
   });
 
   $("clearall").addEventListener("click", () => {
+    const n = Object.keys(decisions).length;
+    if (!n) return;
+    if (!confirm("Clear " + n + " decision" + (n !== 1 ? "s" : "") + "? This cannot be undone.")) return;
     decisions = {};
+    Object.keys(drafts).forEach((k) => delete drafts[k]);
     save(KEY, decisions);
     paintTally();
     select(current);
   });
 
-  for (const [key, label] of [["all", "everything"], ["credits", "unattached credits"],
-                              ["invoices", "open invoices"], ["done", "worked"]]) {
+  /* ── filter chips ─────────────────────────────────────── */
+
+  for (const [key, label] of [
+    ["all",      "everything"],
+    ["credits",  "unattached credits"],
+    ["invoices", "open invoices"],
+    ["charges",  "bank charges"],
+    ["done",     "worked"],
+  ]) {
     const b = el("button", "chip" + (key === "all" ? " on" : ""), label);
     b.type = "button";
     b.addEventListener("click", () => {
@@ -1581,54 +1976,109 @@ for (const [k, v] of runfacts) {
     $("filters").append(b);
   }
 
+  /* ── init ─────────────────────────────────────────────── */
+
   paintTally();
+  buildRTabs();
+  showRTab("queue");
   select(items.length ? items[0].id : null);
 })();
 
 /* ---------- tabs ---------- */
 
 (function tabs() {
-  const defs = [
-    ["result", "Result", null],
-    ["accuracy", "By scenario", RUN.scenarios.length],
-    ["residue", "Escalated", RUN.residue.length],
-    ["review", "Review station", RUN.queue.length],
-    ["trace", "Inspector", null],
+  const navGroups = [
+    {
+      label: "Overview",
+      items: [
+        ["result", "Headline result", null],
+        ["accuracy", "By scenario", RUN.scenarios.length],
+      ],
+    },
+    {
+      label: "Adjudication",
+      items: [
+        ["review", "Review station", RUN.queue.length],
+        ["residue", "Escalated residue", RUN.residue.length],
+      ],
+    },
+    {
+      label: "Audit",
+      items: [
+        ["trace", "Decision inspector", null],
+      ],
+    },
   ];
-  const bar = $("tabs");
+
+  const defs = navGroups.flatMap((g) => g.items);
+  const bar = $("sidenav") || $("tabs");
   const panels = new Map(defs.map(([k]) => [k, document.getElementById("panel-" + k)]));
+
+  const railGroups = {
+    result: ["rail-cash", "rail-runfacts"],
+    accuracy: ["rail-sources", "rail-runfacts"],
+    review: ["rail-reviewer"],
+    residue: ["rail-runfacts"],
+    trace: ["rail-sources"],
+  };
 
   function show(key) {
     for (const [k, panel] of panels) {
+      if (!panel) continue;
       const on = k === key;
       panel.hidden = !on;
       const btn = document.getElementById("tab-" + k);
-      btn.setAttribute("aria-selected", on ? "true" : "false");
-      btn.tabIndex = on ? 0 : -1;
+      if (btn) {
+        btn.setAttribute("aria-selected", on ? "true" : "false");
+        btn.tabIndex = on ? 0 : -1;
+      }
     }
+
+    // Dynamic left rail: only show the cards relevant to the selected panel
+    const visibleRail = new Set(railGroups[key] || []);
+    ["rail-sources", "rail-cash", "rail-reviewer", "rail-runfacts"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.hidden = !visibleRail.has(id);
+    });
+
     try { localStorage.setItem("recon-tab", key); } catch (e) { /* private mode */ }
     if (location.hash.slice(1) !== key) {
-      history.replaceState(null, "", "#" + key);
+      history.pushState(null, "", "#" + key);
     }
   }
 
-  defs.forEach(([key, label, count], i) => {
-    const b = el("button", null, label);
-    b.type = "button";
-    b.id = "tab-" + key;
-    b.setAttribute("role", "tab");
-    b.setAttribute("aria-controls", "panel-" + key);
-    if (count !== null) b.append(el("span", "n", String(count)));
-    b.addEventListener("click", () => show(key));
-    b.addEventListener("keydown", (e) => {
-      const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
-      if (!step) return;
-      e.preventDefault();
-      const next = defs[(i + step + defs.length) % defs.length][0];
-      show(next);
-      document.getElementById("tab-" + next).focus();
+  if (bar) {
+    bar.textContent = "";
+    navGroups.forEach((group) => {
+      const grp = el("div", "navgrp");
+      grp.append(el("div", "navgrp-label", group.label));
+      group.items.forEach(([key, label, count]) => {
+        const b = el("button", null, label);
+        b.type = "button";
+        b.id = "tab-" + key;
+        b.setAttribute("role", "tab");
+        b.setAttribute("aria-controls", "panel-" + key);
+        if (count !== null) b.append(el("span", "n", String(count)));
+        b.addEventListener("click", () => show(key));
+        b.addEventListener("keydown", (e) => {
+          const step = (e.key === "ArrowRight" || e.key === "ArrowDown") ? 1
+                     : (e.key === "ArrowLeft" || e.key === "ArrowUp") ? -1 : 0;
+          if (!step) return;
+          e.preventDefault();
+          const idx = defs.findIndex(([k]) => k === key);
+          const next = defs[(idx + step + defs.length) % defs.length][0];
+          show(next);
+          document.getElementById("tab-" + next)?.focus();
+        });
+        grp.append(b);
+      });
+      bar.append(grp);
     });
-    bar.append(b);
+  }
+
+  window.addEventListener("popstate", () => {
+    const h = location.hash.slice(1);
+    if (panels.has(h)) show(h);
   });
 
   // A pasted #hash wins, so a presenter can link straight to one view. Otherwise
@@ -1652,3 +2102,5 @@ for (const [k, v] of runfacts) {
   for (const b of bits) $("foot").append(el("span", null, b));
 })();
 </script>
+</body>
+</html>
