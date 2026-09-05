@@ -215,6 +215,87 @@ of predictions scores 100% on matching and 100% on exceptions. The same run with
 all 101 operating outflows added to the exception list drops exception precision
 to 24.1%.
 
+## The agent
+
+`reconcile.py` is the agent this benchmark grades. It is a hybrid: a
+deterministic core does all the matching and all the arithmetic, and an LLM
+adjudicates only the rows determinism cannot separate.
+
+```bash
+python reconcile.py --data data --out results              # full run
+python reconcile.py --data data --out results --no-llm     # rules only, and the offline fallback
+python reconcile.py --data data --out results --no-cache   # force live model calls
+python reconcile.py --explain TXN-000123                   # decision trace for one line
+python scripts/evaluate.py                                 # ablation and held-out table
+pytest tests/ -v
+```
+
+### What it scores
+
+Tuned on `data/`, reported on `data_holdout/`, thresholds frozen between the two.
+
+| Configuration | Dataset | Match rate | Precision | Matching F1 | Exception F1 |
+|---|---:|---:|---:|---:|---:|
+| greedy baseline | seed 42 | 58.7% | 87.8% | 70.4% | n/a |
+| rules only | seed 42 | 95.9% | 98.8% | 97.3% | 91.4% |
+| rules + Gemini | seed 42 | 97.7% | 98.8% | 98.2% | 91.4% |
+| rules + Gemini | seed 99, held out | 94.2% | 97.6% | 95.9% | 80.0% |
+
+As a delta on the floor: 98.2% against the greedy 70.4%, so +27.8 points of the
+29.6% headroom. The held-out number is 95.9%, a 2.3 point drop, which is the
+honest generalization figure and the one to quote.
+
+The LLM leg is worth three matches, 165 to 168, with no new false positives. All
+three were rows where the deterministic ranker had two candidates it could not
+separate. That is a real contribution and a small one; the deterministic core
+does the overwhelming majority of the work, and the ablation says so rather than
+implying otherwise.
+
+Exception detection deserves a caveat. It holds 100% recall on both seeds, but
+precision falls from 84% on seed 42 to 71% on the held-out set, so the 91.4%
+becomes 80.0%. Unpaid invoices are the harder half: an invoice with no bank
+credit and an invoice whose credit we simply failed to find look identical from
+the inside.
+
+Runtime is 1.1s on a warm cache and 76s cold, against budgets of 10s and 90s.
+The suite is 89 tests.
+
+The pipeline is ingest, extract, generate candidates, resolve, adjudicate, emit.
+Money is `Decimal` from the ingest boundary onward, because the generator uses
+exact arithmetic and matching depends on exact equality.
+
+The model never does arithmetic and never enumerates. It receives at most five
+pre-computed candidates and returns a choice or `insufficient_evidence`. Any
+design where it computes a fee or scans for a subset loses to a `for` loop.
+Confidence comes from agreement between the deterministic ranker and the model,
+not from the model's own estimate, because models are unreliable at self-reported
+probability and two independent signals are not.
+
+Resolution order matters: duplicates, then splits, then bundles, then a global
+Hungarian assignment over what is left. Bundles have to run before the
+assignment, or the optimiser claims bundled invoices before the bundle search
+ever sees them.
+
+Routing is three-way, not two. Matched rows go to `predicted_matches.csv` and
+rows asserted genuinely unmatchable go to `predicted_exceptions.csv`, but
+anything uncertain that still has a plausible candidate goes to an unscored
+`review_queue.csv` instead. The exception list is scored against far fewer items
+than the match list, so a wrongly asserted exception costs more than one held
+back. Out-of-scope operating lines are never written to the exception file.
+
+`NullAdjudicator` does double duty as the rules-only ablation baseline and the
+fallback when the key or the network is missing, so the offline path is exercised
+on every test run instead of being untested code. Every model call is cached
+under `.llm_cache/` keyed by a SHA-256 of the canonicalized request, and the
+cache is committed, so a demo runs with the network unplugged.
+
+Beyond the two scored CSVs the agent writes `review_queue.csv` ranked by rupees
+at risk, `journal_entries.csv` with a proposed double-entry posting per match,
+`audit_trail.jsonl` with one record per decision, and `run_report.md`. Journal
+entries are a lookup keyed by match type rather than model output, so the
+accounting cannot be hallucinated, and a test asserts every entry in a full run
+balances.
+
 ## Reproducibility
 
 - Every amount uses `Decimal`. No float drift, no rounding rot in the labels.
@@ -234,7 +315,24 @@ generate_dataset.py    Deterministic data generator
 score.py               Scoring harness, per-scenario metrics
 audit_data.py          Structural invariants, 16 checks
 adversarial_audit.py   Naive-baseline and label-leak audit
-requirements.txt       faker, pandas, numpy, scipy
+reconcile.py           The agent, CLI entrypoint
+src/controller/        Agent internals
+  config.py              Thresholds, tolerances, weights
+  models.py              Frozen records, money is Decimal
+  ingest.py              CSV to models
+  extract.py             Evidence from bank narration
+  scoring.py             Transparent weighted sum, never learned
+  indexes.py             Amount, payout-chain, FX and split candidates
+  bundles.py             Fixed-k subset-sum, meet-in-the-middle
+  resolve.py             Duplicates, global assignment, margin confidence
+  routing.py             Match, exception or review
+  actions.py             Journal entries and dispositions
+  emit.py                The output artifacts
+  adjudicator/           Adjudicator protocol, null, disk cache, Gemini
+scripts/evaluate.py    Ablation and held-out table
+tests/                 Agent test suite
+.llm_cache/            Committed, so the demo runs offline
+requirements.txt       faker, pandas, numpy, scipy, google-genai, pytest
 data/                  Generated dataset at seed 42, not committed
 ```
 
@@ -242,4 +340,6 @@ data/                  Generated dataset at seed 42, not committed
 
 Python 3.10 or newer. `faker` for company names, `pandas` for CSV handling,
 `numpy` for the seeded log-normal amount distribution, and `decimal` from the
-standard library for exact currency arithmetic.
+standard library for exact currency arithmetic. The agent adds `scipy` for the
+Hungarian assignment and `google-genai` for adjudication, behind a
+provider-agnostic protocol whose null implementation needs neither.

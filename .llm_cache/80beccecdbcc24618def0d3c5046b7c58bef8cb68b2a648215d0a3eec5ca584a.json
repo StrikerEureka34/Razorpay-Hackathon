@@ -1,0 +1,7 @@
+{
+  "chosen_invoice_ids": [
+    "INV-000041"
+  ],
+  "model": "gemini-3.5-flash",
+  "reasoning": "The bank transaction description 'UPI-000041-WADHWA LTD' contains a reference to the invoice number '000041' (matching INV-000041) and explicitly names the counterparty 'WADHWA LTD', which matches 'Wadhwa Ltd' exactly. The amount and date are also highly consistent."
+}
