@@ -1,0 +1,7 @@
+{
+  "chosen_invoice_ids": [
+    "INV-000123"
+  ],
+  "model": "gemini-3.7-flash",
+  "reasoning": "The transaction description contains both the customer name 'BOASE, BATH' matching candidate 'Boase, Bath and Kari' and the invoice reference number suffix '0123' matching 'INV-000123'."
+}

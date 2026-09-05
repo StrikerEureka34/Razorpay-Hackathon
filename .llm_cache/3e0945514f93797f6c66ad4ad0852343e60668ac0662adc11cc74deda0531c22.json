@@ -1,0 +1,7 @@
+{
+  "chosen_invoice_ids": [
+    "INV-000078"
+  ],
+  "model": "gemini-3.7-flash",
+  "reasoning": "The transaction description clearly mentions 'LOKE, BORA AND GARG', matching the customer name of candidate INV-000078 with high similarity (0.93), exact amount match, and close date proximity."
+}

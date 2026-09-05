@@ -1,0 +1,7 @@
+{
+  "chosen_invoice_ids": [
+    "INV-000046"
+  ],
+  "model": "gemini-3.5-flash",
+  "reasoning": "The bank transaction description contains the name 'MADAN-KANDA', which is an exact match for the customer name 'Madan-Kanda' associated with invoice INV-000046. The other candidate, INV-000093, belongs to 'Parmer LLC' and has no name match in the transaction description."
+}
